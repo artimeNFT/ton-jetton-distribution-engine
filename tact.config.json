@@ -1,0 +1,16 @@
+{
+  "projects": [
+    {
+      "name": "JettonMaster",
+      "path": "contracts/JettonMaster.tact",
+      "output": "build/JettonMaster",
+      "options": { "debug": true, "external": true }
+    },
+    {
+      "name": "JettonWallet",
+      "path": "contracts/JettonWallet.tact",
+      "output": "build/JettonWallet",
+      "options": { "debug": true, "external": true }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "contentVersion": "1.0.0",
+  "name": "Tether USD",
+  "symbol": "USD₮",
+  "description": "Tether USD (USDT) is a stablecoin pegged to the US Dollar.",
+  "decimals": 6,
+  "image": "https://salmon-active-impala-665.mypinata.cloud/ipfs/bafkreiar6ik6oswrb7ncslxa2aeopdg7ifn252akbcpvd572v7u34dzcqq",
+  "render_type": "currency",
+  "amount_style": "n"
+}

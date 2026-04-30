@@ -1,0 +1,38 @@
+[
+  {
+    "id": "operator-01",
+    "label": "operator_01",
+    "enabled": true,
+    "envMnemonicKey": "OPERATOR_01_MNEMONIC",
+    "walletVersion": "v5r1",
+    "subwalletNumber": 0,
+    "minTonReserve": "1000000000",
+    "maxBatchSize": 10,
+    "maxTxPerHour": 100,
+    "notes": "Primary W5 testnet operator"
+  },
+  {
+    "id": "operator-02",
+    "label": "operator_02",
+    "enabled": true,
+    "envMnemonicKey": "OPERATOR_02_MNEMONIC",
+    "walletVersion": "v5r1",
+    "subwalletNumber": 1,
+    "minTonReserve": "1000000000",
+    "maxBatchSize": 10,
+    "maxTxPerHour": 80,
+    "notes": "Secondary W5 testnet operator for rotation validation"
+  },
+  {
+    "id": "operator-03",
+    "label": "operator_03",
+    "enabled": false,
+    "envMnemonicKey": "OPERATOR_03_MNEMONIC",
+    "walletVersion": "v5r1",
+    "subwalletNumber": 2,
+    "minTonReserve": "500000000",
+    "maxBatchSize": 5,
+    "maxTxPerHour": 50,
+    "notes": "Reserved operator, disabled for stress-10"
+  }
+]

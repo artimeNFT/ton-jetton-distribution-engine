@@ -1,0 +1,28 @@
+{
+  "_comment": "Stage A dry run — two recipients only.",
+  "meta": {
+    "version": "1.0.0",
+    "campaignId": "test_run_stage_a_fresh_01",
+    "description": "Stage A dry validation — two recipients",
+    "createdAt": "2026-04-14T00:00:00.000Z",
+    "createdBy": "admin"
+  },
+  "defaults": {
+    "tag": "Group_A",
+    "memo": ""
+  },
+  "recipients": [
+    {
+      "address": "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv",
+      "amount": "1000000000",
+      "tag": "Group_A",
+      "memo": "Stage A dry recipient 1"
+    },
+    {
+      "address": "0QCOg0V56NrWTRv9rv6nVLJWbQXW2cBBL4GzMuc3nHQaJ0oj",
+      "amount": "2500000000",
+      "tag": "Group_B",
+      "memo": "Stage A dry recipient 2"
+    }
+  ]
+}

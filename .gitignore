@@ -1,0 +1,80 @@
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+
+# ─── Build / generated artifacts ──────────────────────────────────────────────
+build/
+dist/
+output/
+temp/
+tmp/
+*.tmp
+*.tmp.*
+*.js.map
+
+# ─── Environment / secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Runtime state ────────────────────────────────────────────────────────────
+run_state.json
+run_state*.json
+*.state.json
+*.state.json.lock
+*.state.json.tmp.*
+legacy/run_state*.json
+
+# ─── Reports / audit output ───────────────────────────────────────────────────
+reports/
+*.csv
+
+# ─── Generated targets ────────────────────────────────────────────────────────
+data/targets.generated.json
+data/targets.*.json
+!data/targets.example.json
+
+# ─── Future Watcher runtime — Stage B artifacts ───────────────────────────────
+data/watcher-cursor.json
+data/candidates/
+data/dedup.db
+data/dedup.db-shm
+data/dedup.db-wal
+
+# ─── Tact / TON compiled artifacts ────────────────────────────────────────────
+*.pkg
+*.boc
+*.cell
+*.abi
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── OS files ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── VS Code ──────────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.history/
+*.vsix
+
+# ─── JetBrains / IDEA ─────────────────────────────────────────────────────────
+.idea/
+
+# ─── VIM ──────────────────────────────────────────────────────────────────────
+Session.vim
+.vim/
+
+# ─── Other private editor folders ─────────────────────────────────────────────
+.nvim/
+.emacs/
+.helix/
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+package.ts
