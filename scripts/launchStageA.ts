@@ -20,6 +20,13 @@
  *                        to the Dispatcher (overrides any compiled-in default)
  *   BATCH_DELAY_MS     — optional; non-negative integer; inter-batch pacing delay passed
  *                        to the Dispatcher (overrides any compiled-in default)
+ *
+ * Fault injection env vars (all ignored when FAULT_INJECTOR_ENABLED is absent or not "true"):
+ *   FAULT_INJECTOR_ENABLED       — optional; set to "true" to enable deterministic fault injection
+ *   FAULT_INJECT_CAMPAIGN_ID     — required when enabled; must match CAMPAIGN_ID exactly
+ *   FAULT_INJECT_RECIPIENT_INDEX — required when enabled; 0-based index into recipients list
+ *   FAULT_INJECT_KIND            — required when enabled; only "rpc_transient" is supported
+ *   FAULT_INJECT_ONCE            — optional; "true" (default) injects only on attemptNumber === 1
  */
 
 import * as path from "path";
@@ -535,30 +542,174 @@ const reconcilerAuditWriter: AuditWriter = {
   },
 };
 
-// ─── Dry-Run MintExecutor ─────────────────────────────────────────────────────
+// ─── Fault Injection ──────────────────────────────────────────────────────────
 //
-// Returns a synthetic txHash without touching the TON chain.
-// DRY_RUN=false is explicitly blocked until a live executor is implemented.
+// Deterministic, env-driven fault injection for Stage A fault matrix testing.
+// All fault logic is confined to this section and buildMintExecutor below.
+// When FAULT_INJECTOR_ENABLED is absent or not "true", zero behaviour changes.
 
-const dryRunExecutor: MintExecutor = {
-  async broadcast(params: BroadcastParams): Promise<BroadcastResult> {
-    const txHash = `dry-run-${params.batchId}-${params.recipientAddress}-${Date.now()}`;
-    console.log(
-      JSON.stringify({
-        level: "info",
-        msg: "[DryRunExecutor] Synthetic broadcast",
-        campaignId: params.campaignId,
-        batchId: params.batchId,
-        recipientAddress: params.recipientAddress,
-        amount: params.amount,
-        operatorId: params.operatorId,
-        attemptNumber: params.attemptNumber,
-        txHash,
-      })
+/** Parsed, validated representation of the fault injection environment. */
+interface FaultConfig {
+  /** Verified campaign ID — must equal the active campaignId at startup. */
+  campaignId: string;
+  /** 0-based index into mappedRecipients. Resolved to an address before use. */
+  recipientIndex: number;
+  /** Only "rpc_transient" is supported at Stage A. */
+  kind: "rpc_transient";
+  /**
+   * When true, inject only on attemptNumber === 1.
+   * Persisted attemptNumber ensures second-run suppression without extra state.
+   * Defaults to true when FAULT_INJECT_ONCE is absent or not "false".
+   */
+  once: boolean;
+}
+
+/**
+ * Reads and validates fault injection env vars.
+ *
+ * Returns null when FAULT_INJECTOR_ENABLED is absent or not exactly "true".
+ * Throws a descriptive error for any present-but-invalid configuration so
+ * misconfigured fault runs fail loudly before Dispatcher handoff.
+ *
+ * @param campaignId - The active campaign ID resolved from CAMPAIGN_ID.
+ */
+function parseFaultConfig(campaignId: string): FaultConfig | null {
+  const enabled = process.env["FAULT_INJECTOR_ENABLED"];
+  if (typeof enabled !== "string" || enabled.trim().toLowerCase() !== "true") {
+    return null;
+  }
+
+  // FAULT_INJECT_CAMPAIGN_ID — must match active campaignId exactly.
+  const injectCampaignId = process.env["FAULT_INJECT_CAMPAIGN_ID"];
+  if (typeof injectCampaignId !== "string" || injectCampaignId.trim() === "") {
+    throw new Error(
+      "[launchStageA] FAULT_INJECTOR_ENABLED=true but FAULT_INJECT_CAMPAIGN_ID is not set."
     );
-    return { txHash, networkRef: null };
-  },
-};
+  }
+  if (injectCampaignId.trim() !== campaignId) {
+    throw new Error(
+      `[launchStageA] FAULT_INJECT_CAMPAIGN_ID "${injectCampaignId.trim()}" does not match ` +
+        `active CAMPAIGN_ID "${campaignId}". ` +
+        `Refusing to inject into the wrong campaign.`
+    );
+  }
+
+  // FAULT_INJECT_RECIPIENT_INDEX — non-negative integer.
+  const indexRaw = process.env["FAULT_INJECT_RECIPIENT_INDEX"];
+  if (typeof indexRaw !== "string" || indexRaw.trim() === "") {
+    throw new Error(
+      "[launchStageA] FAULT_INJECTOR_ENABLED=true but FAULT_INJECT_RECIPIENT_INDEX is not set."
+    );
+  }
+  const recipientIndex = Number(indexRaw.trim());
+  if (!Number.isInteger(recipientIndex) || recipientIndex < 0) {
+    throw new Error(
+      `[launchStageA] FAULT_INJECT_RECIPIENT_INDEX must be a non-negative integer. ` +
+        `Got: "${indexRaw.trim()}".`
+    );
+  }
+
+  // FAULT_INJECT_KIND — only "rpc_transient" supported at Stage A.
+  const kindRaw = process.env["FAULT_INJECT_KIND"];
+  if (typeof kindRaw !== "string" || kindRaw.trim() === "") {
+    throw new Error(
+      "[launchStageA] FAULT_INJECTOR_ENABLED=true but FAULT_INJECT_KIND is not set."
+    );
+  }
+  if (kindRaw.trim() !== "rpc_transient") {
+    throw new Error(
+      `[launchStageA] FAULT_INJECT_KIND "${kindRaw.trim()}" is not supported. ` +
+        `Only "rpc_transient" is supported at Stage A.`
+    );
+  }
+
+  // FAULT_INJECT_ONCE — defaults to true; must be explicitly "false" to disable.
+  const onceRaw = process.env["FAULT_INJECT_ONCE"];
+  const once =
+    typeof onceRaw !== "string" ||
+    onceRaw.trim() === "" ||
+    onceRaw.trim().toLowerCase() !== "false";
+
+  return {
+    campaignId: injectCampaignId.trim(),
+    recipientIndex,
+    kind: "rpc_transient",
+    once,
+  };
+}
+
+// ─── MintExecutor Factory ─────────────────────────────────────────────────────
+//
+// Returns a dry-run MintExecutor.  When fault config is present and the
+// broadcast params match the injected recipient/attempt, throws a
+// transient-classifiable error instead of returning a synthetic txHash.
+//
+// Classification target inside retryPolicy.ts classifyMessage:
+//   "503" matches the transient_rpc branch → disposition retry_same_identity.
+//
+// Injection guard logic (all conditions must be true to inject):
+//   1. fault config is non-null.
+//   2. params.recipientAddress.trim().toLowerCase() === resolvedInjectAddress.
+//   3. If fault.once === true: params.attemptNumber === 1.
+//      On second run, stateStore persists attemptNumber=1; the dispatcher
+//      computes nextAttemptNumber=2, so FAULT_INJECT_ONCE=true is silently
+//      suppressed without needing any external state.
+
+/**
+ * Builds the MintExecutor used by the Dispatcher.
+ *
+ * @param fault                - Parsed fault config, or null for clean dry-run.
+ * @param resolvedInjectAddress - Normalised (trim + lowercase) address of the
+ *                                recipient to inject, or null when fault is null.
+ */
+function buildMintExecutor(
+  fault: FaultConfig | null,
+  resolvedInjectAddress: string | null
+): MintExecutor {
+  return {
+    async broadcast(params: BroadcastParams): Promise<BroadcastResult> {
+      // ── Fault injection gate ─────────────────────────────────────────────
+      if (fault !== null && resolvedInjectAddress !== null) {
+        const normalizedParamAddress = params.recipientAddress.trim().toLowerCase();
+        const addressMatches = normalizedParamAddress === resolvedInjectAddress;
+        const attemptMatches = !fault.once || params.attemptNumber === 1;
+
+        if (addressMatches && attemptMatches) {
+          console.log(
+            JSON.stringify({
+              level: "info",
+              msg: "[FaultInjector] Injecting transient RPC fault",
+              kind: fault.kind,
+              campaignId: params.campaignId,
+              batchId: params.batchId,
+              recipientAddress: params.recipientAddress,
+              attemptNumber: params.attemptNumber,
+              once: fault.once,
+            })
+          );
+          throw new Error("503 Service Unavailable — injected fault [rpc_transient]");
+        }
+      }
+
+      // ── Standard dry-run path ────────────────────────────────────────────
+      const txHash = `dry-run-${params.batchId}-${params.recipientAddress}-${Date.now()}`;
+      console.log(
+        JSON.stringify({
+          level: "info",
+          msg: "[DryRunExecutor] Synthetic broadcast",
+          campaignId: params.campaignId,
+          batchId: params.batchId,
+          recipientAddress: params.recipientAddress,
+          amount: params.amount,
+          operatorId: params.operatorId,
+          attemptNumber: params.attemptNumber,
+          txHash,
+        })
+      );
+      return { txHash, networkRef: null };
+    },
+  };
+}
 
 // ─── run ─────────────────────────────────────────────────────────────────────
 
@@ -589,6 +740,13 @@ export async function run(_provider: NetworkProvider): Promise<void> {
         "Set DRY_RUN=true or implement the executor before enabling live mode."
     );
   }
+
+  // ── 2a. Parse fault injection config ─────────────────────────────────────
+  //
+  // Parsed here — after campaignId is resolved — so FAULT_INJECT_CAMPAIGN_ID
+  // can be validated against the active campaign before any I/O begins.
+  // Returns null when FAULT_INJECTOR_ENABLED is absent or not "true".
+  const faultConfig = parseFaultConfig(campaignId);
 
   // ── 3. Derive paths ───────────────────────────────────────────────────────
 
@@ -691,6 +849,43 @@ export async function run(_provider: NetworkProvider): Promise<void> {
   // This is the sole enforcement point. No other file is modified.
   validateRecipientAddressesForLaunch(mappedRecipients);
 
+  // ── 6b. Resolve fault injection target address ────────────────────────────
+  //
+  // Resolved after address validation so the index is guaranteed to land on a
+  // structurally valid, Address.parse-verified recipient.
+  // The normalised address (trim + lowercase) is what the executor will match
+  // against params.recipientAddress at broadcast time.
+  let resolvedInjectAddress: string | null = null;
+  if (faultConfig !== null) {
+    const idx = faultConfig.recipientIndex;
+    if (idx >= mappedRecipients.length) {
+      throw new Error(
+        `[launchStageA] FAULT_INJECT_RECIPIENT_INDEX ${idx} is out of bounds. ` +
+          `Recipient list has ${mappedRecipients.length} entries (0-based max index: ${mappedRecipients.length - 1}).`
+      );
+    }
+    resolvedInjectAddress = mappedRecipients[idx]!.address.trim().toLowerCase();
+    console.log(
+      JSON.stringify({
+        level: "info",
+        msg: "[launchStageA] Fault injection configured",
+        kind: faultConfig.kind,
+        recipientIndex: idx,
+        resolvedInjectAddress,
+        once: faultConfig.once,
+        campaignId,
+      })
+    );
+  }
+
+  // ── 6c. Build MintExecutor ────────────────────────────────────────────────
+  //
+  // When faultConfig is null, buildMintExecutor returns a standard dry-run
+  // executor identical in behaviour to the old dryRunExecutor constant.
+  // When faultConfig is non-null, the executor will throw a transient-
+  // classifiable error for the resolved recipient on the matching attempt.
+  const mintExecutor = buildMintExecutor(faultConfig, resolvedInjectAddress);
+
   const recipients = mappedRecipients as unknown as CampaignConfig["recipients"];
 
   // Build the amount lookup map immediately after conversion so the write-side
@@ -727,12 +922,12 @@ export async function run(_provider: NetworkProvider): Promise<void> {
   const dispatcher = createDispatcher({
     stateDir,
     reconciler,
-    executor: dryRunExecutor,
+    executor: mintExecutor,
     walletPool,
     retryPolicy: DefaultRetryPolicy,
     auditRecorder: buildDispatcherAuditRecorder(auditFilePath, amountLookup),
     matchingEngine,
-    dryRun: isDryRun,
+    dryRun: faultConfig !== null ? false : isDryRun,
     entryDelayMs,
     batchDelayMs,
   });
