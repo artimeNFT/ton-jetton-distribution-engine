@@ -62,6 +62,9 @@ import {
   type AuditRow,
 } from "../lib/dispatcher/auditWriter";
 
+// Patch — TON address validation before Dispatcher handoff.
+import { Address } from "@ton/core";
+
 // Blueprint NetworkProvider — required by the TON compile convention.
 // COMPILE RISK: only present when @ton/blueprint is installed.
 import type { NetworkProvider } from "@ton/blueprint";
@@ -268,6 +271,67 @@ function mapRecipients(
     ...r,
     amount: convertAmountToBigInt(r.amount, i),
   }));
+}
+
+// ─── Recipient Address Validation ─────────────────────────────────────────────
+
+/**
+ * Validates every recipient address using @ton/core Address.parse before any
+ * Dispatcher interaction occurs.
+ *
+ * Rules enforced:
+ *   - address must be a non-empty string (defence-in-depth; loadRecipients
+ *     already checked this structurally).
+ *   - Address.parse(address.trim()) must succeed without throwing.
+ *
+ * Strategy: collect ALL failures before throwing so the operator sees every
+ * invalid address in one error, not just the first.
+ *
+ * Throwing here guarantees:
+ *   - dispatcher.dispatch is never called.
+ *   - No StateEntry is written ("submitted" or otherwise).
+ *   - No audit row (batch_in_flight, batch_success, batch_failure) is emitted.
+ *   - No CSV row is written for any invalid address.
+ */
+function validateRecipientAddressesForLaunch(
+  recipients: Array<{ address: string; amount: bigint; [key: string]: unknown }>
+): void {
+  const invalid: Array<{ index: number; address: string; reason: string }> = [];
+
+  for (let i = 0; i < recipients.length; i++) {
+    const r = recipients[i]!;
+    const addr = r.address;
+
+    if (typeof addr !== "string" || addr.trim() === "") {
+      invalid.push({
+        index: i,
+        address: String(addr),
+        reason: "address is empty or not a string",
+      });
+      continue;
+    }
+
+    try {
+      Address.parse(addr.trim());
+    } catch (err: unknown) {
+      invalid.push({
+        index: i,
+        address: addr,
+        reason: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  if (invalid.length === 0) return;
+
+  const lines = invalid
+    .map((v) => `  index ${v.index}: "${v.address}" — ${v.reason}`)
+    .join("\n");
+
+  throw new Error(
+    `[launchStageA] Target validation failed: ${invalid.length} invalid recipient address(es):\n` +
+      lines
+  );
 }
 
 // ─── Amount Lookup Map ────────────────────────────────────────────────────────
@@ -612,6 +676,21 @@ export async function run(_provider: NetworkProvider): Promise<void> {
   // The cast through unknown bridges the structural RawRecipient → BatchRecipient
   // gap caused by batchPlanner.ts not being present in the provided file tree.
   const mappedRecipients = mapRecipients(rawRecipients);
+
+  // ── 6a. Address validation gate ───────────────────────────────────────────
+  //
+  // Validates every recipient address via @ton/core Address.parse BEFORE any
+  // Dispatcher, StateStore, or AuditRecorder interaction begins.
+  //
+  // If this throws:
+  //   - dispatcher.dispatch is never called.
+  //   - No StateEntry transitions to "submitted".
+  //   - No batch_in_flight / batch_success / batch_failure audit event fires.
+  //   - No CSV row is produced for any invalid address.
+  //
+  // This is the sole enforcement point. No other file is modified.
+  validateRecipientAddressesForLaunch(mappedRecipients);
+
   const recipients = mappedRecipients as unknown as CampaignConfig["recipients"];
 
   // Build the amount lookup map immediately after conversion so the write-side
