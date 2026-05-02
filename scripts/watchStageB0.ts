@@ -219,6 +219,14 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     typeof (lock as Record<string, unknown>)["activeBatchId"] === "string" &&
     ((lock as Record<string, unknown>)["activeBatchId"] as string).trim() !== "";
 
+  const lockedAt =
+    lock !== null &&
+    typeof lock === "object" &&
+    !Array.isArray(lock) &&
+    typeof (lock as Record<string, unknown>)["lockedAt"] === "string"
+      ? ((lock as Record<string, unknown>)["lockedAt"] as string)
+      : null;
+
   return {
     metaCampaignId,
     metaStatus,
@@ -227,6 +235,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     successWithoutTxHash,
     hardFailureMissingReason,
     lockActive,
+    lockedAt,
   };
 }
 
@@ -366,6 +375,7 @@ interface WatcherStateSummary {
   successWithoutTxHash: number;
   hardFailureMissingReason: number;
   lockActive: boolean;
+  lockedAt: string | null;
 }
 
 interface WatcherBootReport {
