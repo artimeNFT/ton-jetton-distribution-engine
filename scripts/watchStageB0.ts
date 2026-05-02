@@ -65,6 +65,41 @@ async function loadTargetsSummary(input: WatcherInputConfig): Promise<WatcherTar
 
   return { recipientCount: recipients.length, metaCampaignId };
 }
+async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherStateSummary> {
+  const raw = await fs.readFile(input.statePath, "utf8");
+  const parsed: unknown = JSON.parse(raw);
+
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("[watchStageB0] state file must be a JSON object.");
+  }
+
+  const obj = parsed as Record<string, unknown>;
+  const meta = obj["meta"];
+  const entries = obj["entries"];
+  const lock = obj["lock"];
+
+  const metaStatus =
+    meta !== null &&
+    typeof meta === "object" &&
+    !Array.isArray(meta) &&
+    typeof (meta as Record<string, unknown>)["status"] === "string"
+      ? ((meta as Record<string, unknown>)["status"] as string)
+      : null;
+
+  const entryCount =
+    entries !== null && typeof entries === "object" && !Array.isArray(entries)
+      ? Object.keys(entries as Record<string, unknown>).length
+      : 0;
+
+  const lockActive =
+    lock !== null &&
+    typeof lock === "object" &&
+    !Array.isArray(lock) &&
+    typeof (lock as Record<string, unknown>)["activeBatchId"] === "string" &&
+    ((lock as Record<string, unknown>)["activeBatchId"] as string).trim() !== "";
+
+  return { metaStatus, entryCount, lockActive };
+}
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -96,6 +131,11 @@ interface WatcherTargetsSummary {
   recipientCount: number;
   metaCampaignId: string | null;
 }
+interface WatcherStateSummary {
+  metaStatus: string | null;
+  entryCount: number;
+  lockActive: boolean;
+}
 
 interface WatcherBootReport {
   stage: "Stage B-0";
@@ -106,12 +146,14 @@ interface WatcherBootReport {
   input: WatcherInputConfig;
   artifactAccess: WatcherArtifactAccess;
   targets: WatcherTargetsSummary;
+  state: WatcherStateSummary;
 }
 
 function buildBootReport(
   input: WatcherInputConfig,
   artifactAccess: WatcherArtifactAccess,
-  targets: WatcherTargetsSummary
+  targets: WatcherTargetsSummary,
+  state: WatcherStateSummary
 ): WatcherBootReport {
   return {
     stage: "Stage B-0",
@@ -122,6 +164,7 @@ function buildBootReport(
     input,
     artifactAccess,
     targets,
+    state,
   };
 }
 
@@ -129,9 +172,9 @@ async function main(): Promise<void> {
   const input = loadInputConfig();
   const artifactAccess = await verifyArtifactAccess(input);
   const targets = await loadTargetsSummary(input);
-  console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets), null, 2));
+  const state = await loadStateSummary(input);
+  console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets, state), null, 2));
 }
-
 void main().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
   console.error(JSON.stringify({ level: "error", message }, null, 2));
