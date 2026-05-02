@@ -1,4 +1,5 @@
 import "dotenv/config";
+import * as fs from "fs/promises";
 
 type WatcherStatus = "draft";
 
@@ -34,6 +35,33 @@ function loadInputConfig(): WatcherInputConfig {
   };
 }
 
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await fs.access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function verifyArtifactAccess(input: WatcherInputConfig): Promise<WatcherArtifactAccess> {
+  await fs.access(input.targetsPath);
+  await fs.access(input.statePath);
+
+  return {
+    targetsReadable: true,
+    stateReadable: true,
+    reportDirReadable: input.reportDir === null ? null : await pathExists(input.reportDir),
+  };
+}
+
+interface WatcherArtifactAccess {
+  targetsReadable: boolean;
+  stateReadable: boolean;
+  reportDirReadable: boolean | null;
+}
+
 interface WatcherBootReport {
   stage: "Stage B-0";
   status: WatcherStatus;
@@ -41,9 +69,13 @@ interface WatcherBootReport {
   mutationEnabled: false;
   executionEnabled: false;
   input: WatcherInputConfig;
+  artifactAccess: WatcherArtifactAccess;
 }
 
-function buildBootReport(input: WatcherInputConfig): WatcherBootReport {
+function buildBootReport(
+  input: WatcherInputConfig,
+  artifactAccess: WatcherArtifactAccess
+): WatcherBootReport {
   return {
     stage: "Stage B-0",
     status: "draft",
@@ -51,12 +83,14 @@ function buildBootReport(input: WatcherInputConfig): WatcherBootReport {
     mutationEnabled: false,
     executionEnabled: false,
     input,
+    artifactAccess,
   };
 }
 
 async function main(): Promise<void> {
   const input = loadInputConfig();
-  console.log(JSON.stringify(buildBootReport(input), null, 2));
+  const artifactAccess = await verifyArtifactAccess(input);
+  console.log(JSON.stringify(buildBootReport(input, artifactAccess), null, 2));
 }
 
 void main().catch((err: unknown) => {
