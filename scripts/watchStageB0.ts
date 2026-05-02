@@ -276,6 +276,17 @@ function detectFindings(
     }
   }
 
+  if (state.successWithoutTxHash > 0) {
+    findings.push({
+      code: "W014",
+      severity: "critical",
+      message: "Success entries without txHash detected.",
+      details: {
+        successWithoutTxHash: state.successWithoutTxHash,
+      },
+    });
+  }
+
   return findings;
 }
 
