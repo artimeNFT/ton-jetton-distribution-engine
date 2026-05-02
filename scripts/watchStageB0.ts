@@ -149,7 +149,8 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     entries !== null && typeof entries === "object" && !Array.isArray(entries)
       ? Object.keys(entries as Record<string, unknown>).length
       : 0;
-      const statusCounts: Record<string, number> = {};
+
+  const statusCounts: Record<string, number> = {};
 
   if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
     for (const entry of Object.values(entries as Record<string, unknown>)) {
@@ -164,7 +165,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
 
       statusCounts[status] = (statusCounts[status] ?? 0) + 1;
     }
-  }  
+  }
 
   const lockActive =
     lock !== null &&
@@ -173,7 +174,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     typeof (lock as Record<string, unknown>)["activeBatchId"] === "string" &&
     ((lock as Record<string, unknown>)["activeBatchId"] as string).trim() !== "";
 
-    return { metaCampaignId, metaStatus, entryCount, statusCounts, lockActive };
+  return { metaCampaignId, metaStatus, entryCount, statusCounts, lockActive };
 }
 
 function detectFindings(
