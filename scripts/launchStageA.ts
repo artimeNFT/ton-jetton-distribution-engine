@@ -25,7 +25,7 @@
  *   FAULT_INJECTOR_ENABLED       — optional; set to "true" to enable deterministic fault injection
  *   FAULT_INJECT_CAMPAIGN_ID     — required when enabled; must match CAMPAIGN_ID exactly
  *   FAULT_INJECT_RECIPIENT_INDEX — required when enabled; 0-based index into recipients list
- *   FAULT_INJECT_KIND            — required when enabled; supported values: "rpc_transient", "operator_failover"
+ *   FAULT_INJECT_KIND            — required when enabled; supported values: "rpc_transient", "operator_failover", "hard_failure"
  *   FAULT_INJECT_ONCE            — optional; "true" (default) injects only on attemptNumber === 1
  */
 
@@ -556,10 +556,11 @@ interface FaultConfig {
   recipientIndex: number;
   /**
    * Fault kind. Determines which classifiable error message the executor throws.
-   *   "rpc_transient"    → 503 → transient_rpc    → retry_same_identity
+   *   "rpc_transient"     → 503 → transient_rpc     → retry_same_identity
    *   "operator_failover" → insufficient TON → insufficient_ton → rotate_identity
+   *   "hard_failure"      → contract rejected → contract_rejection → fail_batch
    */
-  kind: "rpc_transient" | "operator_failover";
+  kind: "rpc_transient" | "operator_failover" | "hard_failure";
   /**
    * When true, inject only on attemptNumber === 1.
    * Persisted attemptNumber ensures second-run suppression without extra state.
@@ -613,7 +614,7 @@ function parseFaultConfig(campaignId: string): FaultConfig | null {
     );
   }
 
-  // FAULT_INJECT_KIND — "rpc_transient" or "operator_failover".
+  // FAULT_INJECT_KIND — "rpc_transient", "operator_failover", or "hard_failure".
   const kindRaw = process.env["FAULT_INJECT_KIND"];
   if (typeof kindRaw !== "string" || kindRaw.trim() === "") {
     throw new Error(
@@ -621,10 +622,14 @@ function parseFaultConfig(campaignId: string): FaultConfig | null {
     );
   }
   const kindNorm = kindRaw.trim();
-  if (kindNorm !== "rpc_transient" && kindNorm !== "operator_failover") {
+  if (
+    kindNorm !== "rpc_transient" &&
+    kindNorm !== "operator_failover" &&
+    kindNorm !== "hard_failure"
+  ) {
     throw new Error(
       `[launchStageA] FAULT_INJECT_KIND "${kindNorm}" is not supported. ` +
-        `Accepted values: "rpc_transient", "operator_failover".`
+        `Accepted values: "rpc_transient", "operator_failover", "hard_failure".`
     );
   }
   const kind = kindNorm as FaultConfig["kind"];
@@ -651,8 +656,9 @@ function parseFaultConfig(campaignId: string): FaultConfig | null {
 // classifiable error instead of returning a synthetic txHash.
 //
 // Classification targets inside retryPolicy.ts classifyMessage:
-//   "rpc_transient"    → "503" matches transient_rpc    → retry_same_identity
+//   "rpc_transient"     → "503" matches transient_rpc     → retry_same_identity
 //   "operator_failover" → "insufficient ton" matches insufficient_ton → rotate_identity
+//   "hard_failure"      → "contract rejected" matches contract_rejection → fail_batch
 //
 // Injection guard logic (all conditions must be true to inject):
 //   1. fault config is non-null.
@@ -664,8 +670,9 @@ function parseFaultConfig(campaignId: string): FaultConfig | null {
 
 /** Error messages keyed by fault kind, chosen to produce deterministic retryPolicy classification. */
 const FAULT_ERROR_MESSAGES: Record<FaultConfig["kind"], string> = {
-  rpc_transient:    "503 Service Unavailable — injected fault [rpc_transient]",
+  rpc_transient:     "503 Service Unavailable — injected fault [rpc_transient]",
   operator_failover: "Insufficient TON balance — injected fault [operator_failover]",
+  hard_failure:      "Contract rejected the mint operation — injected fault [hard_failure]",
 };
 
 /**
