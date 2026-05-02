@@ -112,6 +112,13 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     typeof (meta as Record<string, unknown>)["status"] === "string"
       ? ((meta as Record<string, unknown>)["status"] as string)
       : null;
+  const metaCampaignId =
+    meta !== null &&
+    typeof meta === "object" &&
+    !Array.isArray(meta) &&
+    typeof (meta as Record<string, unknown>)["campaignId"] === "string"
+      ? ((meta as Record<string, unknown>)["campaignId"] as string)
+      : null;
 
   const entryCount =
     entries !== null && typeof entries === "object" && !Array.isArray(entries)
@@ -125,11 +132,12 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     typeof (lock as Record<string, unknown>)["activeBatchId"] === "string" &&
     ((lock as Record<string, unknown>)["activeBatchId"] as string).trim() !== "";
 
-  return { metaStatus, entryCount, lockActive };
+  return { metaCampaignId, metaStatus, entryCount, lockActive };
 }
 function detectFindings(
   input: WatcherInputConfig,
-  targets: WatcherTargetsSummary
+  targets: WatcherTargetsSummary,
+  state: WatcherStateSummary
 ): WatcherFinding[] {
   const findings: WatcherFinding[] = [];
 
@@ -144,6 +152,21 @@ function detectFindings(
       details: {
         expectedCampaignId: input.campaignId,
         targetsMetaCampaignId: targets.metaCampaignId,
+      },
+    });
+  }
+
+  if (
+    state.metaCampaignId !== null &&
+    state.metaCampaignId !== input.campaignId
+  ) {
+    findings.push({
+      code: "W002",
+      severity: "critical",
+      message: "State campaign ID differs from watcher campaign ID.",
+      details: {
+        expectedCampaignId: input.campaignId,
+        stateMetaCampaignId: state.metaCampaignId,
       },
     });
   }
@@ -181,7 +204,9 @@ interface WatcherTargetsSummary {
   recipientCount: number;
   metaCampaignId: string | null;
 }
+
 interface WatcherStateSummary {
+  metaCampaignId: string | null;
   metaStatus: string | null;
   entryCount: number;
   lockActive: boolean;
@@ -229,7 +254,7 @@ async function main(): Promise<void> {
   const artifactAccess = await verifyArtifactAccess(input);
   const targets = await loadTargetsSummary(input);
   const state = await loadStateSummary(input);
-  const findings = detectFindings(input, targets);
+  const findings = detectFindings(input, targets, state);
   console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets, state, findings), null, 2));
 }
 
