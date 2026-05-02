@@ -4,6 +4,7 @@ import * as fs from "fs/promises";
 type WatcherStatus = "draft";
 
 type WatcherSeverity = "info" | "warning" | "critical";
+const STUCK_LOCK_THRESHOLD_MS = 5 * 60 * 1000;
 
 interface WatcherFinding {
   code: string;
