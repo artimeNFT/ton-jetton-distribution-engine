@@ -537,19 +537,29 @@ class DefaultDispatcher implements Dispatcher {
     // Phase 6: Finalize campaign meta
     const finalState = await store.read();
 
-    const allTerminal =
+    const expectedStateKeys = batches.flatMap((batch) =>
+      batch.recipients.map((recipient) => makeStateKey(batch.batchId, recipient.address))
+    );
+
+    const allExpectedEntriesTerminal =
       !stoppedEarly &&
-      Object.values(finalState.entries).every(
-        (e) =>
-          e.status === "success" ||
-          e.status === "hard_failure" ||
-          e.status === "skipped" ||
-          e.status === "cancelled"
-      );
+      expectedStateKeys.length === campaign.recipients.length &&
+      expectedStateKeys.every((key) => {
+        const entry = finalState.entries[key];
+        return (
+          entry !== undefined &&
+          (
+            entry.status === "success" ||
+            entry.status === "hard_failure" ||
+            entry.status === "skipped" ||
+            entry.status === "cancelled"
+          )
+        );
+      });
 
     const finalStatus: "stopped" | "completed" | "running" = stoppedEarly
       ? "stopped"
-      : allTerminal
+      : allExpectedEntriesTerminal
       ? "completed"
       : "running";
 
