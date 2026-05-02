@@ -127,6 +127,29 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
 
   return { metaStatus, entryCount, lockActive };
 }
+function detectFindings(
+  input: WatcherInputConfig,
+  targets: WatcherTargetsSummary
+): WatcherFinding[] {
+  const findings: WatcherFinding[] = [];
+
+  if (
+    targets.metaCampaignId !== null &&
+    targets.metaCampaignId !== input.campaignId
+  ) {
+    findings.push({
+      code: "W002",
+      severity: "critical",
+      message: "Targets campaign ID differs from watcher campaign ID.",
+      details: {
+        expectedCampaignId: input.campaignId,
+        targetsMetaCampaignId: targets.metaCampaignId,
+      },
+    });
+  }
+
+  return findings;
+}
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -182,7 +205,8 @@ function buildBootReport(
   input: WatcherInputConfig,
   artifactAccess: WatcherArtifactAccess,
   targets: WatcherTargetsSummary,
-  state: WatcherStateSummary
+  state: WatcherStateSummary,
+  findings: WatcherFinding[]
 ): WatcherBootReport {
 
   return {
@@ -195,8 +219,8 @@ function buildBootReport(
     artifactAccess,
     targets,
     state,
-    summary: summarizeFindings([]),
-    findings: [],
+    summary: summarizeFindings(findings),
+    findings,
   };
 }
 
@@ -205,8 +229,10 @@ async function main(): Promise<void> {
   const artifactAccess = await verifyArtifactAccess(input);
   const targets = await loadTargetsSummary(input);
   const state = await loadStateSummary(input);
-  console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets, state), null, 2));
+  const findings = detectFindings(input, targets);
+  console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets, state, findings), null, 2));
 }
+
 void main().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
   console.error(JSON.stringify({ level: "error", message }, null, 2));
