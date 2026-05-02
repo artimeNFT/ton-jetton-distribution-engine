@@ -213,7 +213,7 @@ function detectFindings(
       },
     });
   }
-  
+
   if (targets.uniqueRecipientAddresses < targets.recipientCount) {
     findings.push({
       code: "W006",
@@ -225,6 +225,29 @@ function detectFindings(
       },
     });
   }
+
+  if (state.metaStatus === "completed") {
+    const nonTerminalAfterCompleted =
+      (state.statusCounts["planned"] ?? 0) +
+      (state.statusCounts["submitted"] ?? 0) +
+      (state.statusCounts["cooldown"] ?? 0);
+
+    if (nonTerminalAfterCompleted > 0) {
+      findings.push({
+        code: "W008",
+        severity: "critical",
+        message: "Completed campaign contains non-terminal entries.",
+        details: {
+          metaStatus: state.metaStatus,
+          planned: state.statusCounts["planned"] ?? 0,
+          submitted: state.statusCounts["submitted"] ?? 0,
+          cooldown: state.statusCounts["cooldown"] ?? 0,
+          nonTerminalAfterCompleted,
+        },
+      });
+    }
+  }
+
   return findings;
 }
 
