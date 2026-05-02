@@ -167,6 +167,27 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     }
   }
 
+  let successWithoutTxHash = 0;
+
+  if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
+    for (const entry of Object.values(entries as Record<string, unknown>)) {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        continue;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const status = record["status"];
+      const txHash = record["txHash"];
+
+      if (
+        status === "success" &&
+        (typeof txHash !== "string" || txHash.trim() === "")
+      ) {
+        successWithoutTxHash += 1;
+      }
+    }
+  }
+
   const lockActive =
     lock !== null &&
     typeof lock === "object" &&
@@ -174,7 +195,14 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     typeof (lock as Record<string, unknown>)["activeBatchId"] === "string" &&
     ((lock as Record<string, unknown>)["activeBatchId"] as string).trim() !== "";
 
-  return { metaCampaignId, metaStatus, entryCount, statusCounts, lockActive };
+  return {
+    metaCampaignId,
+    metaStatus,
+    entryCount,
+    statusCounts,
+    successWithoutTxHash,
+    lockActive,
+  };
 }
 
 function detectFindings(
@@ -288,6 +316,7 @@ interface WatcherStateSummary {
   metaStatus: string | null;
   entryCount: number;
   statusCounts: Record<string, number>;
+  successWithoutTxHash: number;
   lockActive: boolean;
 }
 
