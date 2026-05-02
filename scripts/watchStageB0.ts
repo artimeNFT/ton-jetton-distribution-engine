@@ -62,12 +62,29 @@ function loadInputConfig(): WatcherInputConfig {
   };
 }
 
+function extractNormalizedRecipientAddresses(recipients: unknown[]): string[] {
+  return recipients.map((recipient) => {
+    if (recipient === null || typeof recipient !== "object" || Array.isArray(recipient)) {
+      return "";
+    }
+
+    const address = (recipient as Record<string, unknown>)["address"];
+    return typeof address === "string" ? address.trim().toLowerCase() : "";
+  });
+}
+
 async function loadTargetsSummary(input: WatcherInputConfig): Promise<WatcherTargetsSummary> {
   const raw = await fs.readFile(input.targetsPath, "utf8");
   const parsed: unknown = JSON.parse(raw);
 
   if (Array.isArray(parsed)) {
-    return { recipientCount: parsed.length, metaCampaignId: null };
+    const normalizedAddresses = extractNormalizedRecipientAddresses(parsed);
+
+    return {
+      recipientCount: parsed.length,
+      uniqueRecipientAddresses: new Set(normalizedAddresses).size,
+      metaCampaignId: null,
+    };
   }
 
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -90,8 +107,15 @@ async function loadTargetsSummary(input: WatcherInputConfig): Promise<WatcherTar
       ? ((meta as Record<string, unknown>)["campaignId"] as string)
       : null;
 
-  return { recipientCount: recipients.length, metaCampaignId };
+  const normalizedAddresses = extractNormalizedRecipientAddresses(recipients);
+
+  return {
+    recipientCount: recipients.length,
+    uniqueRecipientAddresses: new Set(normalizedAddresses).size,
+    metaCampaignId,
+  };
 }
+
 async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherStateSummary> {
   const raw = await fs.readFile(input.statePath, "utf8");
   const parsed: unknown = JSON.parse(raw);
@@ -112,6 +136,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     typeof (meta as Record<string, unknown>)["status"] === "string"
       ? ((meta as Record<string, unknown>)["status"] as string)
       : null;
+
   const metaCampaignId =
     meta !== null &&
     typeof meta === "object" &&
@@ -134,6 +159,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
 
   return { metaCampaignId, metaStatus, entryCount, lockActive };
 }
+
 function detectFindings(
   input: WatcherInputConfig,
   targets: WatcherTargetsSummary,
@@ -202,6 +228,7 @@ interface WatcherArtifactAccess {
 
 interface WatcherTargetsSummary {
   recipientCount: number;
+  uniqueRecipientAddresses: number;
   metaCampaignId: string | null;
 }
 
@@ -233,7 +260,6 @@ function buildBootReport(
   state: WatcherStateSummary,
   findings: WatcherFinding[]
 ): WatcherBootReport {
-
   return {
     stage: "Stage B-0",
     status: "draft",
