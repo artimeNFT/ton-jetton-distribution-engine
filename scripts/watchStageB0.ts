@@ -35,6 +35,36 @@ function loadInputConfig(): WatcherInputConfig {
   };
 }
 
+async function loadTargetsSummary(input: WatcherInputConfig): Promise<WatcherTargetsSummary> {
+  const raw = await fs.readFile(input.targetsPath, "utf8");
+  const parsed: unknown = JSON.parse(raw);
+
+  if (Array.isArray(parsed)) {
+    return { recipientCount: parsed.length, metaCampaignId: null };
+  }
+
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("[watchStageB0] targets file must be an array or an object.");
+  }
+
+  const obj = parsed as Record<string, unknown>;
+  const recipients = obj["recipients"];
+
+  if (!Array.isArray(recipients)) {
+    throw new Error("[watchStageB0] targets file must contain a recipients array.");
+  }
+
+  const meta = obj["meta"];
+  const metaCampaignId =
+    meta !== null &&
+    typeof meta === "object" &&
+    !Array.isArray(meta) &&
+    typeof (meta as Record<string, unknown>)["campaignId"] === "string"
+      ? ((meta as Record<string, unknown>)["campaignId"] as string)
+      : null;
+
+  return { recipientCount: recipients.length, metaCampaignId };
+}
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -62,6 +92,11 @@ interface WatcherArtifactAccess {
   reportDirReadable: boolean | null;
 }
 
+interface WatcherTargetsSummary {
+  recipientCount: number;
+  metaCampaignId: string | null;
+}
+
 interface WatcherBootReport {
   stage: "Stage B-0";
   status: WatcherStatus;
@@ -70,11 +105,13 @@ interface WatcherBootReport {
   executionEnabled: false;
   input: WatcherInputConfig;
   artifactAccess: WatcherArtifactAccess;
+  targets: WatcherTargetsSummary;
 }
 
 function buildBootReport(
   input: WatcherInputConfig,
-  artifactAccess: WatcherArtifactAccess
+  artifactAccess: WatcherArtifactAccess,
+  targets: WatcherTargetsSummary
 ): WatcherBootReport {
   return {
     stage: "Stage B-0",
@@ -84,13 +121,15 @@ function buildBootReport(
     executionEnabled: false,
     input,
     artifactAccess,
+    targets,
   };
 }
 
 async function main(): Promise<void> {
   const input = loadInputConfig();
   const artifactAccess = await verifyArtifactAccess(input);
-  console.log(JSON.stringify(buildBootReport(input, artifactAccess), null, 2));
+  const targets = await loadTargetsSummary(input);
+  console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets), null, 2));
 }
 
 void main().catch((err: unknown) => {
