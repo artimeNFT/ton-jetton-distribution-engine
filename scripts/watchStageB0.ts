@@ -149,6 +149,22 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     entries !== null && typeof entries === "object" && !Array.isArray(entries)
       ? Object.keys(entries as Record<string, unknown>).length
       : 0;
+      const statusCounts: Record<string, number> = {};
+
+  if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
+    for (const entry of Object.values(entries as Record<string, unknown>)) {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        continue;
+      }
+
+      const status = (entry as Record<string, unknown>)["status"];
+      if (typeof status !== "string") {
+        continue;
+      }
+
+      statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    }
+  }  
 
   const lockActive =
     lock !== null &&
@@ -157,7 +173,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     typeof (lock as Record<string, unknown>)["activeBatchId"] === "string" &&
     ((lock as Record<string, unknown>)["activeBatchId"] as string).trim() !== "";
 
-  return { metaCampaignId, metaStatus, entryCount, lockActive };
+    return { metaCampaignId, metaStatus, entryCount, statusCounts, lockActive };
 }
 
 function detectFindings(
@@ -247,6 +263,7 @@ interface WatcherStateSummary {
   metaCampaignId: string | null;
   metaStatus: string | null;
   entryCount: number;
+  statusCounts: Record<string, number>;
   lockActive: boolean;
 }
 
