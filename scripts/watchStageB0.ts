@@ -196,7 +196,18 @@ function detectFindings(
       },
     });
   }
-
+  
+  if (targets.uniqueRecipientAddresses < targets.recipientCount) {
+    findings.push({
+      code: "W006",
+      severity: "critical",
+      message: "Duplicate target recipient addresses detected.",
+      details: {
+        recipientCount: targets.recipientCount,
+        uniqueRecipientAddresses: targets.uniqueRecipientAddresses,
+      },
+    });
+  }
   return findings;
 }
 
