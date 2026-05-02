@@ -63,6 +63,21 @@ function loadInputConfig(): WatcherInputConfig {
   };
 }
 
+function getAgeMs(nowIso: string, thenIso: string | null): number | null {
+  if (thenIso === null) {
+    return null;
+  }
+
+  const nowMs = Date.parse(nowIso);
+  const thenMs = Date.parse(thenIso);
+
+  if (!Number.isFinite(nowMs) || !Number.isFinite(thenMs)) {
+    return null;
+  }
+
+  return nowMs - thenMs;
+}
+
 function extractNormalizedRecipientAddresses(recipients: unknown[]): string[] {
   return recipients.map((recipient) => {
     if (recipient === null || typeof recipient !== "object" || Array.isArray(recipient)) {
