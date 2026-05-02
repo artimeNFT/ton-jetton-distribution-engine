@@ -3,6 +3,33 @@ import * as fs from "fs/promises";
 
 type WatcherStatus = "draft";
 
+type WatcherSeverity = "info" | "warning" | "critical";
+
+interface WatcherFinding {
+  code: string;
+  severity: WatcherSeverity;
+  message: string;
+  details: Record<string, unknown>;
+}
+
+interface WatcherFindingsSummary {
+  severity: WatcherSeverity;
+  findings: number;
+  warning: number;
+  critical: number;
+}
+
+function summarizeFindings(findings: WatcherFinding[]): WatcherFindingsSummary {
+  const warning = findings.filter((f) => f.severity === "warning").length;
+  const critical = findings.filter((f) => f.severity === "critical").length;
+
+  return {
+    severity: critical > 0 ? "critical" : warning > 0 ? "warning" : "info",
+    findings: findings.length,
+    warning,
+    critical,
+  };
+}
 
 interface WatcherInputConfig {
   campaignId: string;
@@ -147,6 +174,8 @@ interface WatcherBootReport {
   artifactAccess: WatcherArtifactAccess;
   targets: WatcherTargetsSummary;
   state: WatcherStateSummary;
+  summary: WatcherFindingsSummary;
+  findings: WatcherFinding[];
 }
 
 function buildBootReport(
@@ -155,6 +184,7 @@ function buildBootReport(
   targets: WatcherTargetsSummary,
   state: WatcherStateSummary
 ): WatcherBootReport {
+
   return {
     stage: "Stage B-0",
     status: "draft",
@@ -165,6 +195,8 @@ function buildBootReport(
     artifactAccess,
     targets,
     state,
+    summary: summarizeFindings([]),
+    findings: [],
   };
 }
 
