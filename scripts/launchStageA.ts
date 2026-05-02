@@ -25,7 +25,7 @@
  *   FAULT_INJECTOR_ENABLED       — optional; set to "true" to enable deterministic fault injection
  *   FAULT_INJECT_CAMPAIGN_ID     — required when enabled; must match CAMPAIGN_ID exactly
  *   FAULT_INJECT_RECIPIENT_INDEX — required when enabled; 0-based index into recipients list
- *   FAULT_INJECT_KIND            — required when enabled; only "rpc_transient" is supported
+ *   FAULT_INJECT_KIND            — required when enabled; supported values: "rpc_transient", "operator_failover"
  *   FAULT_INJECT_ONCE            — optional; "true" (default) injects only on attemptNumber === 1
  */
 
@@ -554,8 +554,12 @@ interface FaultConfig {
   campaignId: string;
   /** 0-based index into mappedRecipients. Resolved to an address before use. */
   recipientIndex: number;
-  /** Only "rpc_transient" is supported at Stage A. */
-  kind: "rpc_transient";
+  /**
+   * Fault kind. Determines which classifiable error message the executor throws.
+   *   "rpc_transient"    → 503 → transient_rpc    → retry_same_identity
+   *   "operator_failover" → insufficient TON → insufficient_ton → rotate_identity
+   */
+  kind: "rpc_transient" | "operator_failover";
   /**
    * When true, inject only on attemptNumber === 1.
    * Persisted attemptNumber ensures second-run suppression without extra state.
@@ -609,19 +613,21 @@ function parseFaultConfig(campaignId: string): FaultConfig | null {
     );
   }
 
-  // FAULT_INJECT_KIND — only "rpc_transient" supported at Stage A.
+  // FAULT_INJECT_KIND — "rpc_transient" or "operator_failover".
   const kindRaw = process.env["FAULT_INJECT_KIND"];
   if (typeof kindRaw !== "string" || kindRaw.trim() === "") {
     throw new Error(
       "[launchStageA] FAULT_INJECTOR_ENABLED=true but FAULT_INJECT_KIND is not set."
     );
   }
-  if (kindRaw.trim() !== "rpc_transient") {
+  const kindNorm = kindRaw.trim();
+  if (kindNorm !== "rpc_transient" && kindNorm !== "operator_failover") {
     throw new Error(
-      `[launchStageA] FAULT_INJECT_KIND "${kindRaw.trim()}" is not supported. ` +
-        `Only "rpc_transient" is supported at Stage A.`
+      `[launchStageA] FAULT_INJECT_KIND "${kindNorm}" is not supported. ` +
+        `Accepted values: "rpc_transient", "operator_failover".`
     );
   }
+  const kind = kindNorm as FaultConfig["kind"];
 
   // FAULT_INJECT_ONCE — defaults to true; must be explicitly "false" to disable.
   const onceRaw = process.env["FAULT_INJECT_ONCE"];
@@ -633,7 +639,7 @@ function parseFaultConfig(campaignId: string): FaultConfig | null {
   return {
     campaignId: injectCampaignId.trim(),
     recipientIndex,
-    kind: "rpc_transient",
+    kind,
     once,
   };
 }
@@ -642,10 +648,11 @@ function parseFaultConfig(campaignId: string): FaultConfig | null {
 //
 // Returns a dry-run MintExecutor.  When fault config is present and the
 // broadcast params match the injected recipient/attempt, throws a
-// transient-classifiable error instead of returning a synthetic txHash.
+// classifiable error instead of returning a synthetic txHash.
 //
-// Classification target inside retryPolicy.ts classifyMessage:
-//   "503" matches the transient_rpc branch → disposition retry_same_identity.
+// Classification targets inside retryPolicy.ts classifyMessage:
+//   "rpc_transient"    → "503" matches transient_rpc    → retry_same_identity
+//   "operator_failover" → "insufficient ton" matches insufficient_ton → rotate_identity
 //
 // Injection guard logic (all conditions must be true to inject):
 //   1. fault config is non-null.
@@ -654,6 +661,12 @@ function parseFaultConfig(campaignId: string): FaultConfig | null {
 //      On second run, stateStore persists attemptNumber=1; the dispatcher
 //      computes nextAttemptNumber=2, so FAULT_INJECT_ONCE=true is silently
 //      suppressed without needing any external state.
+
+/** Error messages keyed by fault kind, chosen to produce deterministic retryPolicy classification. */
+const FAULT_ERROR_MESSAGES: Record<FaultConfig["kind"], string> = {
+  rpc_transient:    "503 Service Unavailable — injected fault [rpc_transient]",
+  operator_failover: "Insufficient TON balance — injected fault [operator_failover]",
+};
 
 /**
  * Builds the MintExecutor used by the Dispatcher.
@@ -675,19 +688,21 @@ function buildMintExecutor(
         const attemptMatches = !fault.once || params.attemptNumber === 1;
 
         if (addressMatches && attemptMatches) {
+          const errorMessage = FAULT_ERROR_MESSAGES[fault.kind];
           console.log(
             JSON.stringify({
               level: "info",
-              msg: "[FaultInjector] Injecting transient RPC fault",
+              msg: "[FaultInjector] Injecting fault",
               kind: fault.kind,
               campaignId: params.campaignId,
               batchId: params.batchId,
               recipientAddress: params.recipientAddress,
               attemptNumber: params.attemptNumber,
               once: fault.once,
+              errorMessage,
             })
           );
-          throw new Error("503 Service Unavailable — injected fault [rpc_transient]");
+          throw new Error(errorMessage);
         }
       }
 
