@@ -248,6 +248,21 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     }
   }
 
+  const batchIds = new Set<string>();
+
+  if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
+    for (const entry of Object.values(entries as Record<string, unknown>)) {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        continue;
+      }
+
+      const batchId = (entry as Record<string, unknown>)["batchId"];
+      if (typeof batchId === "string" && batchId.trim() !== "") {
+        batchIds.add(batchId);
+      }
+    }
+  }
+
   const lockActive =
     lock !== null &&
     typeof lock === "object" &&
@@ -279,6 +294,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     successWithoutTxHash,
     hardFailureMissingReason,
     submittedStuckCount,
+    batchIds: Array.from(batchIds).sort(),
     lockActive,
     activeBatchId,
     lockedAt,
@@ -451,6 +467,7 @@ interface WatcherStateSummary {
   successWithoutTxHash: number;
   hardFailureMissingReason: number;
   submittedStuckCount: number;
+  batchIds: string[];
   lockActive: boolean;
   activeBatchId: string | null;
   lockedAt: string | null;
