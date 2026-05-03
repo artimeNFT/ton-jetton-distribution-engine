@@ -848,13 +848,21 @@ async function main(): Promise<void> {
   const state = await loadStateSummary(input);
   const findings = detectFindings(input, targets, operators, entryKeys, state);
 
-  console.log(
-    JSON.stringify(
-      buildBootReport(input, artifactAccess, targets, operators, entryKeys, state, findings),
-      null,
-      2
-    )
-  );
+  const report = buildBootReport(input, artifactAccess, targets, operators, entryKeys, state, findings);
+
+  console.log(JSON.stringify(report, null, 2));
+
+  if (report.summary.severity === "critical") {
+    process.exitCode = 2;
+    return;
+  }
+
+  if (report.summary.severity === "warning") {
+    process.exitCode = 1;
+    return;
+  }
+
+  process.exitCode = 0;
 }
 
 void main().catch((err: unknown) => {
