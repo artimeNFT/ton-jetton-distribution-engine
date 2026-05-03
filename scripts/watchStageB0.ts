@@ -360,6 +360,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
 function detectFindings(
   input: WatcherInputConfig,
   targets: WatcherTargetsSummary,
+  operators: WatcherOperatorsSummary,
   state: WatcherStateSummary
 ): WatcherFinding[] {
   const findings: WatcherFinding[] = [];
@@ -426,6 +427,22 @@ function detectFindings(
         },
       });
     }
+  }
+
+  if (
+    operators.configured &&
+    state.activeOperatorId !== null &&
+    !operators.operatorIds.includes(state.activeOperatorId)
+  ) {
+    findings.push({
+      code: "W012",
+      severity: "critical",
+      message: "Active lock references an unknown operator ID.",
+      details: {
+        activeOperatorId: state.activeOperatorId,
+        knownOperatorCount: operators.operatorIds.length,
+      },
+    });
   }
 
   if (
@@ -597,7 +614,7 @@ async function main(): Promise<void> {
   const targets = await loadTargetsSummary(input);
   const operators = await loadOperatorsSummary(input);
   const state = await loadStateSummary(input);
-  const findings = detectFindings(input, targets, state);
+  const findings = detectFindings(input, targets, operators, state);
   console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets, operators, state, findings), null, 2));
 }
 
