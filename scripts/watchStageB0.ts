@@ -783,6 +783,22 @@ function detectFindings(
   }
 
   if (
+    audit.configured &&
+    audit.statusMismatchRows !== null &&
+    audit.statusMismatchRows > 0
+  ) {
+    findings.push({
+      code: "W022",
+      severity: "critical",
+      message: "Audit CSV status differs from state status.",
+      details: {
+        reportPath: audit.reportPath,
+        statusMismatchRows: audit.statusMismatchRows,
+      },
+    });
+  }
+
+  if (
     entryKeys.enabled &&
     entryKeys.missingExpectedEntryCount !== null &&
     entryKeys.missingExpectedEntryCount > 0
