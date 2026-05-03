@@ -220,3 +220,56 @@ print("[stage-b1] W017 PASS")
 PY
 
 rm -f "$W017_CSV"
+
+W020_CSV="/tmp/stage-b1-w020-amount-mismatch.csv"
+W020_OUT="/tmp/stage-b1-w020.json"
+
+echo "[stage-b1] Preparing W020 audit amount-mismatch fixture"
+
+python3 - "$REPORT_PATH" "$W020_CSV" <<'PY'
+import csv
+import sys
+from pathlib import Path
+
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+
+rows = list(csv.reader(src.open(newline="")))
+amount_index = rows[0].index("amount")
+rows[1][amount_index] = "999999999"
+
+csv.writer(dst.open("w", newline="")).writerows(rows)
+print(f"[stage-b1] W020 patched amount: {rows[1][amount_index]}")
+PY
+
+set +e
+WATCH_CAMPAIGN_ID="$CAMPAIGN_ID" \
+WATCH_TARGETS_PATH="$TARGETS_PATH" \
+WATCH_STATE_PATH="$STATE_PATH" \
+WATCH_REPORT_DIR="$REPORT_DIR" \
+WATCH_REPORT_PATH="$W020_CSV" \
+WATCH_OPERATORS_PATH="$OPERATORS_PATH" \
+WATCH_BATCH_SIZE="$BATCH_SIZE" \
+WATCH_NOW_ISO="$NOW_ISO" \
+npx ts-node scripts/watchStageB0.ts > "$W020_OUT"
+W020_EXIT="$?"
+set -e
+
+python3 - "$W020_OUT" "$W020_EXIT" <<'PY'
+import json
+import sys
+
+report = json.load(open(sys.argv[1]))
+exit_code = int(sys.argv[2])
+
+assert exit_code == 2
+assert report["summary"]["severity"] == "critical"
+assert report["summary"]["findings"] == 1
+finding = report["findings"][0]
+assert finding["code"] == "W020"
+assert finding["details"]["amountMismatchRows"] == 1
+
+print("[stage-b1] W020 PASS")
+PY
+
+rm -f "$W020_CSV"
