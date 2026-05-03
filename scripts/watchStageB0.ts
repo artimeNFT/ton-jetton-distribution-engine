@@ -38,6 +38,7 @@ interface WatcherInputConfig {
   statePath: string;
   reportDir: string | null;
   operatorsPath: string | null;
+  batchSize: number | null;
   nowIso: string;
 }
 
@@ -54,6 +55,20 @@ function optionalEnv(name: string): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
+function optionalPositiveIntegerEnv(name: string): number | null {
+  const value = optionalEnv(name);
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error(`[watchStageB0] ${name} must be a positive integer.`);
+  }
+
+  return parsed;
+}
+
 function loadInputConfig(): WatcherInputConfig {
   return {
     campaignId: requireEnv("WATCH_CAMPAIGN_ID"),
@@ -61,6 +76,7 @@ function loadInputConfig(): WatcherInputConfig {
     statePath: requireEnv("WATCH_STATE_PATH"),
     reportDir: optionalEnv("WATCH_REPORT_DIR"),
     operatorsPath: optionalEnv("WATCH_OPERATORS_PATH"),
+    batchSize: optionalPositiveIntegerEnv("WATCH_BATCH_SIZE"),
     nowIso: optionalEnv("WATCH_NOW_ISO") ?? new Date().toISOString(),
   };
 }
