@@ -177,6 +177,7 @@ export interface DispatcherConfig {
   matchingEngine: MatchingEngine;
   logger?: DispatcherLogger;
   dryRun: boolean;
+  forceExecutorInDryRun?: boolean;
   /**
    * Optional inter-entry pacing delay in milliseconds.
    * Applied between consecutive recipient broadcasts within a single batch.
@@ -248,6 +249,7 @@ class DefaultDispatcher implements Dispatcher {
   private readonly matchingEngine: MatchingEngine;
   private readonly logger: DispatcherLogger;
   private readonly dryRun: boolean;
+  private readonly forceExecutorInDryRun: boolean;
   /** Inter-entry pacing delay (ms). 0 means fall back to plan.pacingDelayMs. */
   private readonly entryDelayMs: number;
   /** Inter-batch pacing delay (ms). 0 means no additional delay. */
@@ -263,6 +265,7 @@ class DefaultDispatcher implements Dispatcher {
     this.auditRecorder = config.auditRecorder;
     this.matchingEngine = config.matchingEngine;
     this.dryRun = config.dryRun;
+    this.forceExecutorInDryRun = config.forceExecutorInDryRun ?? false;
     this.logger = config.logger ?? buildConsoleLogger();
     this.entryDelayMs = config.entryDelayMs ?? 0;
     this.batchDelayMs = config.batchDelayMs ?? 0;
@@ -703,7 +706,7 @@ class DefaultDispatcher implements Dispatcher {
       });
 
       // Broadcast
-      if (this.dryRun) {
+      if (this.dryRun && !this.forceExecutorInDryRun) {
         const successNow = nowIso();
         // (1B: draft explicitly RunState)
         await store.update((draft: RunState) => {
@@ -1163,6 +1166,16 @@ function validateDispatcherConfig(config: DispatcherConfig): void {
   if (typeof config.dryRun !== "boolean") {
     throw new DispatcherError(
       `[Dispatcher] "dryRun" must be explicitly set to a boolean. Got: ${String(config.dryRun)}.`,
+      "CONFIG_INVALID"
+    );
+  }
+
+  if (
+    config.forceExecutorInDryRun !== undefined &&
+    typeof config.forceExecutorInDryRun !== "boolean"
+  ) {
+    throw new DispatcherError(
+      `[Dispatcher] "forceExecutorInDryRun" must be a boolean when provided. Got: ${String(config.forceExecutorInDryRun)}.`,
       "CONFIG_INVALID"
     );
   }

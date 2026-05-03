@@ -949,7 +949,8 @@ export async function run(_provider: NetworkProvider): Promise<void> {
     retryPolicy: DefaultRetryPolicy,
     auditRecorder: buildDispatcherAuditRecorder(auditFilePath, amountLookup),
     matchingEngine,
-    dryRun: faultConfig !== null ? false : isDryRun,
+    dryRun: isDryRun,
+    forceExecutorInDryRun: faultConfig !== null,
     entryDelayMs,
     batchDelayMs,
   });
