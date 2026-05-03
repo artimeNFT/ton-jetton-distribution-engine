@@ -614,6 +614,17 @@ function detectFindings(
     });
   }
 
+  if (state.expiredCooldownCount > 0) {
+    findings.push({
+      code: "W016",
+      severity: "critical",
+      message: "Cooldown entries are expired.",
+      details: {
+        expiredCooldownCount: state.expiredCooldownCount,
+      },
+    });
+  }
+
   if (state.batchAttemptDriftCount > 0) {
     findings.push({
       code: "W013",
