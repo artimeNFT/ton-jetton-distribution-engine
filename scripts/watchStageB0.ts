@@ -284,6 +284,16 @@ async function loadEntryKeyComparisonSummary(
   };
 }
 
+async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTargetsSummary): Promise<WatcherAuditSummary> {
+  return {
+    configured: input.reportPath !== null,
+    reportPath: input.reportPath,
+    headerValid: null,
+    rowCount: null,
+    expectedRowCount: targets.expectedEntryCount,
+  };
+}
+
 async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherStateSummary> {
   const raw = await fs.readFile(input.statePath, "utf8");
   const parsed: unknown = JSON.parse(raw);
