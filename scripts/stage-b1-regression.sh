@@ -58,3 +58,53 @@ assert state["lockActive"] is False
 
 print("[stage-b1] baseline PASS")
 PY
+
+W004_STATE="/tmp/stage-b1-w004-missing-entry.state.json"
+W004_OUT="/tmp/stage-b1-w004.json"
+
+echo "[stage-b1] Preparing W004 missing-entry fixture"
+cp "$STATE_PATH" "$W004_STATE"
+
+python3 - "$W004_STATE" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+state = json.load(open(path))
+key = next(iter(state["entries"]))
+del state["entries"][key]
+open(path, "w").write(json.dumps(state, indent=2) + "\n")
+print(f"[stage-b1] W004 deleted entry: {key}")
+PY
+
+set +e
+WATCH_CAMPAIGN_ID="$CAMPAIGN_ID" \
+WATCH_TARGETS_PATH="$TARGETS_PATH" \
+WATCH_STATE_PATH="$W004_STATE" \
+WATCH_REPORT_DIR="$REPORT_DIR" \
+WATCH_REPORT_PATH="$REPORT_PATH" \
+WATCH_OPERATORS_PATH="$OPERATORS_PATH" \
+WATCH_BATCH_SIZE="$BATCH_SIZE" \
+WATCH_NOW_ISO="$NOW_ISO" \
+npx ts-node scripts/watchStageB0.ts > "$W004_OUT"
+W004_EXIT="$?"
+set -e
+
+python3 - "$W004_OUT" "$W004_EXIT" <<'PY'
+import json
+import sys
+
+report = json.load(open(sys.argv[1]))
+exit_code = int(sys.argv[2])
+
+assert exit_code == 2
+assert report["summary"]["severity"] == "critical"
+assert report["summary"]["findings"] == 1
+finding = report["findings"][0]
+assert finding["code"] == "W004"
+assert finding["details"]["missingExpectedEntryCount"] == 1
+
+print("[stage-b1] W004 PASS")
+PY
+
+rm -f "$W004_STATE"
