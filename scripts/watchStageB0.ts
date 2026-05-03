@@ -825,6 +825,7 @@ interface WatcherBootReport {
   artifactAccess: WatcherArtifactAccess;
   targets: WatcherTargetsSummary;
   operators: WatcherOperatorsSummary;
+  audit: WatcherAuditSummary;
   entryKeys: WatcherEntryKeyComparisonSummary;
   state: WatcherStateSummary;
   summary: WatcherFindingsSummary;
@@ -836,6 +837,7 @@ function buildBootReport(
   artifactAccess: WatcherArtifactAccess,
   targets: WatcherTargetsSummary,
   operators: WatcherOperatorsSummary,
+  audit: WatcherAuditSummary,
   entryKeys: WatcherEntryKeyComparisonSummary,
   state: WatcherStateSummary,
   findings: WatcherFinding[]
@@ -850,6 +852,7 @@ function buildBootReport(
     artifactAccess,
     targets,
     operators,
+    audit,
     entryKeys,
     state,
     summary: summarizeFindings(findings),
@@ -862,11 +865,12 @@ async function main(): Promise<void> {
   const artifactAccess = await verifyArtifactAccess(input);
   const targets = await loadTargetsSummary(input);
   const operators = await loadOperatorsSummary(input);
+  const audit = await loadAuditSummary(input, targets);
   const entryKeys = await loadEntryKeyComparisonSummary(input);
   const state = await loadStateSummary(input);
   const findings = detectFindings(input, targets, operators, entryKeys, state);
 
-  const report = buildBootReport(input, artifactAccess, targets, operators, entryKeys, state, findings);
+  const report = buildBootReport(input, artifactAccess, targets, operators, audit, entryKeys, state, findings);
 
   console.log(JSON.stringify(report, null, 2));
 
