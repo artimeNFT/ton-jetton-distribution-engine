@@ -133,6 +133,51 @@ async function loadTargetsSummary(input: WatcherInputConfig): Promise<WatcherTar
     metaCampaignId,
   };
 }
+async function loadOperatorsSummary(input: WatcherInputConfig): Promise<WatcherOperatorsSummary> {
+  if (input.operatorsPath === null) {
+    return {
+      configured: false,
+      operatorCount: 0,
+      operatorIds: [],
+      duplicateOperatorIds: [],
+    };
+  }
+
+  const raw = await fs.readFile(input.operatorsPath, "utf8");
+  const parsed: unknown = JSON.parse(raw);
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("[watchStageB0] operators file must be a JSON array.");
+  }
+
+  const operatorIds = parsed
+    .map((operator) => {
+      if (operator === null || typeof operator !== "object" || Array.isArray(operator)) {
+        return "";
+      }
+
+      const id = (operator as Record<string, unknown>)["id"];
+      return typeof id === "string" ? id.trim() : "";
+    })
+    .filter((id) => id !== "");
+
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const id of operatorIds) {
+    if (seen.has(id)) {
+      duplicates.add(id);
+    }
+    seen.add(id);
+  }
+
+  return {
+    configured: true,
+    operatorCount: operatorIds.length,
+    operatorIds: Array.from(new Set(operatorIds)).sort(),
+    duplicateOperatorIds: Array.from(duplicates).sort(),
+  };
+}
 
 async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherStateSummary> {
   const raw = await fs.readFile(input.statePath, "utf8");
@@ -476,6 +521,13 @@ interface WatcherTargetsSummary {
   metaCampaignId: string | null;
 }
 
+interface WatcherOperatorsSummary {
+  configured: boolean;
+  operatorCount: number;
+  operatorIds: string[];
+  duplicateOperatorIds: string[];
+}
+
 interface WatcherStateSummary {
   metaCampaignId: string | null;
   metaStatus: string | null;
@@ -499,6 +551,7 @@ interface WatcherBootReport {
   input: WatcherInputConfig;
   artifactAccess: WatcherArtifactAccess;
   targets: WatcherTargetsSummary;
+  operators: WatcherOperatorsSummary;
   state: WatcherStateSummary;
   summary: WatcherFindingsSummary;
   findings: WatcherFinding[];
@@ -508,6 +561,7 @@ function buildBootReport(
   input: WatcherInputConfig,
   artifactAccess: WatcherArtifactAccess,
   targets: WatcherTargetsSummary,
+  operators: WatcherOperatorsSummary,
   state: WatcherStateSummary,
   findings: WatcherFinding[]
 ): WatcherBootReport {
@@ -520,6 +574,7 @@ function buildBootReport(
     input,
     artifactAccess,
     targets,
+    operators,
     state,
     summary: summarizeFindings(findings),
     findings,
@@ -530,9 +585,10 @@ async function main(): Promise<void> {
   const input = loadInputConfig();
   const artifactAccess = await verifyArtifactAccess(input);
   const targets = await loadTargetsSummary(input);
+  const operators = await loadOperatorsSummary(input);
   const state = await loadStateSummary(input);
   const findings = detectFindings(input, targets, state);
-  console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets, state, findings), null, 2));
+  console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets, operators, state, findings), null, 2));
 }
 
 void main().catch((err: unknown) => {
