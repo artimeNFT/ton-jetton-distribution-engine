@@ -618,6 +618,17 @@ function detectFindings(
     }
   }
 
+  if (audit.configured && audit.headerValid === false) {
+    findings.push({
+      code: "W018",
+      severity: "critical",
+      message: "Audit CSV header is invalid.",
+      details: {
+        reportPath: audit.reportPath,
+      },
+    });
+  }
+
   if (
     audit.configured &&
     audit.rowCount !== null &&
