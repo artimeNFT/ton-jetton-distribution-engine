@@ -675,6 +675,22 @@ function detectFindings(
   }
 
   if (
+    audit.configured &&
+    audit.duplicateRecipientRows !== null &&
+    audit.duplicateRecipientRows > 0
+  ) {
+    findings.push({
+      code: "W019",
+      severity: "critical",
+      message: "Audit CSV contains duplicate recipient rows.",
+      details: {
+        reportPath: audit.reportPath,
+        duplicateRecipientRows: audit.duplicateRecipientRows,
+      },
+    });
+  }
+
+  if (
     entryKeys.enabled &&
     entryKeys.missingExpectedEntryCount !== null &&
     entryKeys.missingExpectedEntryCount > 0
