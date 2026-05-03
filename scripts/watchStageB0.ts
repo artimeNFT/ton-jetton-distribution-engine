@@ -118,6 +118,7 @@ async function loadTargetsSummary(input: WatcherInputConfig): Promise<WatcherTar
       recipientCount: parsed.length,
       uniqueRecipientAddresses: new Set(normalizedAddresses).size,
       expectedEntryCount: input.batchSize === null ? null : parsed.length,
+      expectedEntryKeyCount: input.batchSize === null ? null : parsed.length,
       metaCampaignId: null,
     };
   }
@@ -148,6 +149,7 @@ async function loadTargetsSummary(input: WatcherInputConfig): Promise<WatcherTar
     recipientCount: recipients.length,
     uniqueRecipientAddresses: new Set(normalizedAddresses).size,
     expectedEntryCount: input.batchSize === null ? null : recipients.length,
+    expectedEntryKeyCount: input.batchSize === null ? null : recipients.length,
     metaCampaignId,
   };
 }
@@ -632,6 +634,7 @@ interface WatcherTargetsSummary {
   recipientCount: number;
   uniqueRecipientAddresses: number;
   expectedEntryCount: number | null;
+  expectedEntryKeyCount: number | null;
   metaCampaignId: string | null;
 }
 
