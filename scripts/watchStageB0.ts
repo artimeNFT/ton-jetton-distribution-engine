@@ -255,6 +255,14 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     typeof (lock as Record<string, unknown>)["activeBatchId"] === "string" &&
     ((lock as Record<string, unknown>)["activeBatchId"] as string).trim() !== "";
 
+  const activeBatchId =
+    lock !== null &&
+    typeof lock === "object" &&
+    !Array.isArray(lock) &&
+    typeof (lock as Record<string, unknown>)["activeBatchId"] === "string"
+      ? ((lock as Record<string, unknown>)["activeBatchId"] as string)
+      : null;
+
   const lockedAt =
     lock !== null &&
     typeof lock === "object" &&
@@ -272,6 +280,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     hardFailureMissingReason,
     submittedStuckCount,
     lockActive,
+    activeBatchId,
     lockedAt,
   };
 }
@@ -443,6 +452,7 @@ interface WatcherStateSummary {
   hardFailureMissingReason: number;
   submittedStuckCount: number;
   lockActive: boolean;
+  activeBatchId: string | null;
   lockedAt: string | null;
 }
 
