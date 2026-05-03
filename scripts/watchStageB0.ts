@@ -294,6 +294,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
       headerValid: null,
       rowCount: null,
       expectedRowCount: targets.expectedEntryCount,
+      duplicateRecipientRows: null,
     };
   }
 
@@ -301,6 +302,31 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
   const lines = raw.split(/\r?\n/).filter((line) => line.trim() !== "");
   const header = lines[0] ?? "";
   const rowCount = Math.max(lines.length - 1, 0);
+  const recipientAddressIndex = header.split(",").indexOf("recipientAddress");
+  const seenRecipients = new Set<string>();
+  let duplicateRecipientRows: number | null = null;
+
+  if (recipientAddressIndex >= 0) {
+    duplicateRecipientRows = 0;
+
+    for (const line of lines.slice(1)) {
+      const recipientAddress = (line.split(",")[recipientAddressIndex] ?? "")
+        .trim()
+        .replace(/^"|"$/g, "")
+        .toLowerCase();
+
+      if (recipientAddress === "") {
+        continue;
+      }
+
+      if (seenRecipients.has(recipientAddress)) {
+        duplicateRecipientRows += 1;
+        continue;
+      }
+
+      seenRecipients.add(recipientAddress);
+    }
+  }
 
   return {
     configured: true,
@@ -308,6 +334,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     headerValid: header === expectedHeader,
     rowCount,
     expectedRowCount: targets.expectedEntryCount,
+    duplicateRecipientRows,
   };
 }
 
@@ -836,6 +863,7 @@ interface WatcherAuditSummary {
   headerValid: boolean | null;
   rowCount: number | null;
   expectedRowCount: number | null;
+  duplicateRecipientRows: number | null;
 }
 
 interface WatcherEntryKeyComparisonSummary {
