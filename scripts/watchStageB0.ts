@@ -285,11 +285,28 @@ async function loadEntryKeyComparisonSummary(
 }
 
 async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTargetsSummary): Promise<WatcherAuditSummary> {
+  const expectedHeader = "timestamp,campaignId,batchId,recipientAddress,amount,status,attempts,walletLabel,txHash,reason,error";
+
+  if (input.reportPath === null) {
+    return {
+      configured: false,
+      reportPath: null,
+      headerValid: null,
+      rowCount: null,
+      expectedRowCount: targets.expectedEntryCount,
+    };
+  }
+
+  const raw = await fs.readFile(input.reportPath, "utf8");
+  const lines = raw.split(/\r?\n/).filter((line) => line.trim() !== "");
+  const header = lines[0] ?? "";
+  const rowCount = Math.max(lines.length - 1, 0);
+
   return {
-    configured: input.reportPath !== null,
+    configured: true,
     reportPath: input.reportPath,
-    headerValid: null,
-    rowCount: null,
+    headerValid: header === expectedHeader,
+    rowCount,
     expectedRowCount: targets.expectedEntryCount,
   };
 }
