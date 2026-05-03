@@ -228,6 +228,26 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     }
   }
 
+  let submittedStuckCount = 0;
+
+  if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
+    for (const entry of Object.values(entries as Record<string, unknown>)) {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        continue;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const status = record["status"];
+      const submittedAt = typeof record["submittedAt"] === "string" ? record["submittedAt"] : null;
+      const updatedAt = typeof record["updatedAt"] === "string" ? record["updatedAt"] : null;
+      const ageMs = getAgeMs(input.nowIso, submittedAt ?? updatedAt);
+
+      if (status === "submitted" && ageMs !== null && ageMs > STUCK_LOCK_THRESHOLD_MS) {
+        submittedStuckCount += 1;
+      }
+    }
+  }
+
   const lockActive =
     lock !== null &&
     typeof lock === "object" &&
@@ -250,6 +270,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     statusCounts,
     successWithoutTxHash,
     hardFailureMissingReason,
+    submittedStuckCount,
     lockActive,
     lockedAt,
   };
@@ -408,6 +429,7 @@ interface WatcherStateSummary {
   statusCounts: Record<string, number>;
   successWithoutTxHash: number;
   hardFailureMissingReason: number;
+  submittedStuckCount: number;
   lockActive: boolean;
   lockedAt: string | null;
 }
