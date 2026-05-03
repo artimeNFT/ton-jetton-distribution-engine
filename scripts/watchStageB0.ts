@@ -326,6 +326,24 @@ function detectFindings(
     }
   }
 
+  if (state.lockActive) {
+    const lockAgeMs = getAgeMs(input.nowIso, state.lockedAt);
+
+    if (lockAgeMs !== null && lockAgeMs > STUCK_LOCK_THRESHOLD_MS) {
+      findings.push({
+        code: "W010",
+        severity: "critical",
+        message: "Active lock is older than the configured threshold.",
+        details: {
+          lockedAt: state.lockedAt,
+          nowIso: input.nowIso,
+          lockAgeMs,
+          thresholdMs: STUCK_LOCK_THRESHOLD_MS,
+        },
+      });
+    }
+  }
+
   if (state.successWithoutTxHash > 0) {
     findings.push({
       code: "W014",
