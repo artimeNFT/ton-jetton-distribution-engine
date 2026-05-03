@@ -773,6 +773,14 @@ interface WatcherOperatorsSummary {
   duplicateOperatorIds: string[];
 }
 
+interface WatcherAuditSummary {
+  configured: boolean;
+  reportPath: string | null;
+  headerValid: boolean | null;
+  rowCount: number | null;
+  expectedRowCount: number | null;
+}
+
 interface WatcherEntryKeyComparisonSummary {
   enabled: boolean;
   missingExpectedEntryCount: number | null;
