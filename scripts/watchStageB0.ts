@@ -325,6 +325,14 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
       ? ((lock as Record<string, unknown>)["activeBatchId"] as string)
       : null;
 
+  const activeOperatorId =
+    lock !== null &&
+    typeof lock === "object" &&
+    !Array.isArray(lock) &&
+    typeof (lock as Record<string, unknown>)["activeOperatorId"] === "string"
+      ? ((lock as Record<string, unknown>)["activeOperatorId"] as string)
+      : null;
+
   const lockedAt =
     lock !== null &&
     typeof lock === "object" &&
@@ -344,6 +352,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     batchIds: Array.from(batchIds).sort(),
     lockActive,
     activeBatchId,
+    activeOperatorId,
     lockedAt,
   };
 }
@@ -539,6 +548,7 @@ interface WatcherStateSummary {
   batchIds: string[];
   lockActive: boolean;
   activeBatchId: string | null;
+  activeOperatorId: string | null;
   lockedAt: string | null;
 }
 
