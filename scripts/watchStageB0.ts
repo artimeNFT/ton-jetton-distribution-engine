@@ -296,6 +296,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
       expectedRowCount: targets.expectedEntryCount,
       duplicateRecipientRows: null,
       amountMismatchRows: null,
+      statusMismatchRows: null,
     };
   }
 
@@ -305,7 +306,9 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
   const rowCount = Math.max(lines.length - 1, 0);
   const recipientAddressIndex = header.split(",").indexOf("recipientAddress");
   const amountIndex = header.split(",").indexOf("amount");
+  const statusIndex = header.split(",").indexOf("status");
   const expectedAmounts = new Map<string, string>();
+  const expectedStatuses = new Map<string, string>();
   const stateRaw = await fs.readFile(input.statePath, "utf8");
   const stateParsed: unknown = JSON.parse(stateRaw);
 
@@ -321,9 +324,15 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
         const record = entry as Record<string, unknown>;
         const recipientAddress = record["recipientAddress"];
         const amount = record["amount"];
+        const status = record["status"];
 
         if (typeof recipientAddress === "string" && typeof amount === "string") {
           expectedAmounts.set(recipientAddress.trim().toLowerCase(), amount.trim());
+        }
+
+        if (typeof recipientAddress === "string" && typeof status === "string") {
+          const auditStatus = status === "hard_failure" ? "failed" : status;
+          expectedStatuses.set(recipientAddress.trim().toLowerCase(), auditStatus);
         }
       }
     }
@@ -373,6 +382,26 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     }
   }
 
+  let statusMismatchRows: number | null = null;
+
+  if (recipientAddressIndex >= 0 && statusIndex >= 0) {
+    statusMismatchRows = 0;
+
+    for (const line of lines.slice(1)) {
+      const parts = line.split(",");
+      const recipientAddress = (parts[recipientAddressIndex] ?? "")
+        .trim()
+        .replace(/^"|"$/g, "")
+        .toLowerCase();
+      const status = (parts[statusIndex] ?? "").trim().replace(/^"|"$/g, "");
+      const expectedStatus = expectedStatuses.get(recipientAddress);
+
+      if (expectedStatus !== undefined && status !== expectedStatus) {
+        statusMismatchRows += 1;
+      }
+    }
+  }
+
   return {
     configured: true,
     reportPath: input.reportPath,
@@ -381,6 +410,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     expectedRowCount: targets.expectedEntryCount,
     duplicateRecipientRows,
     amountMismatchRows,
+    statusMismatchRows,
   };
 }
 
@@ -943,6 +973,7 @@ interface WatcherAuditSummary {
   expectedRowCount: number | null;
   duplicateRecipientRows: number | null;
   amountMismatchRows: number | null;
+  statusMismatchRows: number | null;
 }
 
 interface WatcherEntryKeyComparisonSummary {
