@@ -331,6 +331,30 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     }
   }
 
+  let batchAttemptDriftCount = 0;
+
+  if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
+    for (const entry of Object.values(entries as Record<string, unknown>)) {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        continue;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const batchId = record["batchId"];
+      const attemptNumber = record["attemptNumber"];
+
+      if (typeof batchId !== "string" || typeof attemptNumber !== "number") {
+        continue;
+      }
+
+      const batchAttempt = batchAttempts[batchId];
+
+      if (typeof batchAttempt === "number" && attemptNumber > batchAttempt) {
+        batchAttemptDriftCount += 1;
+      }
+    }
+  }
+
   const lockActive =
     lock !== null &&
     typeof lock === "object" &&
@@ -371,6 +395,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     hardFailureMissingReason,
     submittedStuckCount,
     batchAttempts,
+    batchAttemptDriftCount,
     batchIds: Array.from(batchIds).sort(),
     lockActive,
     activeBatchId,
@@ -597,6 +622,7 @@ interface WatcherStateSummary {
   submittedStuckCount: number;
   batchIds: string[];
   batchAttempts: Record<string, number>;
+  batchAttemptDriftCount: number;
   lockActive: boolean;
   activeBatchId: string | null;
   activeOperatorId: string | null;
