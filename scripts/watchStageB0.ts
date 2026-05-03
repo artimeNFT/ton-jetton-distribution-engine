@@ -372,6 +372,21 @@ function detectFindings(
     }
   }
 
+  if (
+    state.activeBatchId !== null &&
+    !state.batchIds.includes(state.activeBatchId)
+  ) {
+    findings.push({
+      code: "W011",
+      severity: "critical",
+      message: "Active lock references an unknown batch ID.",
+      details: {
+        activeBatchId: state.activeBatchId,
+        knownBatchCount: state.batchIds.length,
+      },
+    });
+  }
+
   if (state.submittedStuckCount > 0) {
     findings.push({
       code: "W009",
