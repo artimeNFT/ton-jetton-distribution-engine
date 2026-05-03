@@ -554,6 +554,7 @@ function detectFindings(
   input: WatcherInputConfig,
   targets: WatcherTargetsSummary,
   operators: WatcherOperatorsSummary,
+  audit: WatcherAuditSummary,
   entryKeys: WatcherEntryKeyComparisonSummary,
   state: WatcherStateSummary
 ): WatcherFinding[] {
@@ -615,6 +616,24 @@ function detectFindings(
         },
       });
     }
+  }
+
+  if (
+    audit.configured &&
+    audit.rowCount !== null &&
+    audit.expectedRowCount !== null &&
+    audit.rowCount !== audit.expectedRowCount
+  ) {
+    findings.push({
+      code: "W017",
+      severity: "critical",
+      message: "Audit CSV row count differs from expected row count.",
+      details: {
+        reportPath: audit.reportPath,
+        rowCount: audit.rowCount,
+        expectedRowCount: audit.expectedRowCount,
+      },
+    });
   }
 
   if (
@@ -885,7 +904,7 @@ async function main(): Promise<void> {
   const audit = await loadAuditSummary(input, targets);
   const entryKeys = await loadEntryKeyComparisonSummary(input);
   const state = await loadStateSummary(input);
-  const findings = detectFindings(input, targets, operators, entryKeys, state);
+  const findings = detectFindings(input, targets, operators, audit, entryKeys, state);
 
   const report = buildBootReport(input, artifactAccess, targets, operators, audit, entryKeys, state, findings);
 
