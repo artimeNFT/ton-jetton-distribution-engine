@@ -176,7 +176,7 @@ export interface DispatcherConfig {
   auditRecorder: AuditRecorder;
   matchingEngine: MatchingEngine;
   logger?: DispatcherLogger;
-  dryRun?: boolean;
+  dryRun: boolean;
   /**
    * Optional inter-entry pacing delay in milliseconds.
    * Applied between consecutive recipient broadcasts within a single batch.
@@ -262,7 +262,7 @@ class DefaultDispatcher implements Dispatcher {
     this.retryPolicy = config.retryPolicy;
     this.auditRecorder = config.auditRecorder;
     this.matchingEngine = config.matchingEngine;
-    this.dryRun = config.dryRun ?? false;
+    this.dryRun = config.dryRun;
     this.logger = config.logger ?? buildConsoleLogger();
     this.entryDelayMs = config.entryDelayMs ?? 0;
     this.batchDelayMs = config.batchDelayMs ?? 0;
@@ -1159,6 +1159,13 @@ function validateDispatcherConfig(config: DispatcherConfig): void {
   requireInterface(config.retryPolicy, "retryPolicy", ["classify"]);
   requireInterface(config.auditRecorder, "auditRecorder", ["write"]);
   requireInterface(config.matchingEngine, "matchingEngine", ["prepareExecutionPlan"]);
+
+  if (typeof config.dryRun !== "boolean") {
+    throw new DispatcherError(
+      `[Dispatcher] "dryRun" must be explicitly set to a boolean. Got: ${String(config.dryRun)}.`,
+      "CONFIG_INVALID"
+    );
+  }
 
   // 1F: Validate optional pacing fields when provided.
   if (
