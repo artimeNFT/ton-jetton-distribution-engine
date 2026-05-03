@@ -169,3 +169,54 @@ print("[stage-b1] W005 PASS")
 PY
 
 rm -f "$W005_STATE"
+
+W017_CSV="/tmp/stage-b1-w017-row-count.csv"
+W017_OUT="/tmp/stage-b1-w017.json"
+
+echo "[stage-b1] Preparing W017 audit row-count fixture"
+
+python3 - "$REPORT_PATH" "$W017_CSV" <<'PY'
+from pathlib import Path
+import sys
+
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+
+lines = src.read_text().splitlines()
+dst.write_text("\n".join(lines[:-1]) + "\n")
+
+print(f"[stage-b1] W017 rows: {len(lines) - 1} -> {len(lines[:-1]) - 1}")
+PY
+
+set +e
+WATCH_CAMPAIGN_ID="$CAMPAIGN_ID" \
+WATCH_TARGETS_PATH="$TARGETS_PATH" \
+WATCH_STATE_PATH="$STATE_PATH" \
+WATCH_REPORT_DIR="$REPORT_DIR" \
+WATCH_REPORT_PATH="$W017_CSV" \
+WATCH_OPERATORS_PATH="$OPERATORS_PATH" \
+WATCH_BATCH_SIZE="$BATCH_SIZE" \
+WATCH_NOW_ISO="$NOW_ISO" \
+npx ts-node scripts/watchStageB0.ts > "$W017_OUT"
+W017_EXIT="$?"
+set -e
+
+python3 - "$W017_OUT" "$W017_EXIT" <<'PY'
+import json
+import sys
+
+report = json.load(open(sys.argv[1]))
+exit_code = int(sys.argv[2])
+
+assert exit_code == 2
+assert report["summary"]["severity"] == "critical"
+assert report["summary"]["findings"] == 1
+finding = report["findings"][0]
+assert finding["code"] == "W017"
+assert finding["details"]["rowCount"] == 99
+assert finding["details"]["expectedRowCount"] == 100
+
+print("[stage-b1] W017 PASS")
+PY
+
+rm -f "$W017_CSV"
