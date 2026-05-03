@@ -38,6 +38,7 @@ interface WatcherInputConfig {
   targetsPath: string;
   statePath: string;
   reportDir: string | null;
+  reportPath: string | null;
   operatorsPath: string | null;
   batchSize: number | null;
   nowIso: string;
@@ -76,6 +77,7 @@ function loadInputConfig(): WatcherInputConfig {
     targetsPath: requireEnv("WATCH_TARGETS_PATH"),
     statePath: requireEnv("WATCH_STATE_PATH"),
     reportDir: optionalEnv("WATCH_REPORT_DIR"),
+    reportPath: optionalEnv("WATCH_REPORT_PATH"),
     operatorsPath: optionalEnv("WATCH_OPERATORS_PATH"),
     batchSize: optionalPositiveIntegerEnv("WATCH_BATCH_SIZE"),
     nowIso: optionalEnv("WATCH_NOW_ISO") ?? new Date().toISOString(),
