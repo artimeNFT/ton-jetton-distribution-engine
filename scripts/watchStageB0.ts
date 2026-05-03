@@ -295,6 +295,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
       rowCount: null,
       expectedRowCount: targets.expectedEntryCount,
       duplicateRecipientRows: null,
+      amountMismatchRows: null,
     };
   }
 
@@ -303,6 +304,30 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
   const header = lines[0] ?? "";
   const rowCount = Math.max(lines.length - 1, 0);
   const recipientAddressIndex = header.split(",").indexOf("recipientAddress");
+  const amountIndex = header.split(",").indexOf("amount");
+  const expectedAmounts = new Map<string, string>();
+  const stateRaw = await fs.readFile(input.statePath, "utf8");
+  const stateParsed: unknown = JSON.parse(stateRaw);
+
+  if (stateParsed !== null && typeof stateParsed === "object" && !Array.isArray(stateParsed)) {
+    const entries = (stateParsed as Record<string, unknown>)["entries"];
+
+    if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
+      for (const entry of Object.values(entries as Record<string, unknown>)) {
+        if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+          continue;
+        }
+
+        const record = entry as Record<string, unknown>;
+        const recipientAddress = record["recipientAddress"];
+        const amount = record["amount"];
+
+        if (typeof recipientAddress === "string" && typeof amount === "string") {
+          expectedAmounts.set(recipientAddress.trim().toLowerCase(), amount.trim());
+        }
+      }
+    }
+  }
   const seenRecipients = new Set<string>();
   let duplicateRecipientRows: number | null = null;
 
@@ -328,6 +353,26 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     }
   }
 
+  let amountMismatchRows: number | null = null;
+
+  if (recipientAddressIndex >= 0 && amountIndex >= 0) {
+    amountMismatchRows = 0;
+
+    for (const line of lines.slice(1)) {
+      const parts = line.split(",");
+      const recipientAddress = (parts[recipientAddressIndex] ?? "")
+        .trim()
+        .replace(/^"|"$/g, "")
+        .toLowerCase();
+      const amount = (parts[amountIndex] ?? "").trim().replace(/^"|"$/g, "");
+      const expectedAmount = expectedAmounts.get(recipientAddress);
+
+      if (expectedAmount !== undefined && amount !== expectedAmount) {
+        amountMismatchRows += 1;
+      }
+    }
+  }
+
   return {
     configured: true,
     reportPath: input.reportPath,
@@ -335,6 +380,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     rowCount,
     expectedRowCount: targets.expectedEntryCount,
     duplicateRecipientRows,
+    amountMismatchRows,
   };
 }
 
@@ -880,6 +926,7 @@ interface WatcherAuditSummary {
   rowCount: number | null;
   expectedRowCount: number | null;
   duplicateRecipientRows: number | null;
+  amountMismatchRows: number | null;
 }
 
 interface WatcherEntryKeyComparisonSummary {
