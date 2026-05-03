@@ -187,6 +187,30 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
       }
     }
   }
+  let hardFailureMissingReason = 0;
+
+  if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
+    for (const entry of Object.values(entries as Record<string, unknown>)) {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        continue;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const status = record["status"];
+      const lastError = record["lastError"];
+      const lastErrorCode = record["lastErrorCode"];
+
+      const missingLastError =
+        typeof lastError !== "string" || lastError.trim() === "";
+
+      const missingLastErrorCode =
+        typeof lastErrorCode !== "string" || lastErrorCode.trim() === "";
+
+      if (status === "hard_failure" && (missingLastError || missingLastErrorCode)) {
+        hardFailureMissingReason += 1;
+      }
+    }
+  }
 
   const lockActive =
     lock !== null &&
@@ -201,6 +225,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     entryCount,
     statusCounts,
     successWithoutTxHash,
+    hardFailureMissingReason,
     lockActive,
   };
 }
@@ -328,6 +353,7 @@ interface WatcherStateSummary {
   entryCount: number;
   statusCounts: Record<string, number>;
   successWithoutTxHash: number;
+  hardFailureMissingReason: number;
   lockActive: boolean;
 }
 
