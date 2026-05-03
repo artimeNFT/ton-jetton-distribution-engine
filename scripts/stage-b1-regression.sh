@@ -108,3 +108,64 @@ print("[stage-b1] W004 PASS")
 PY
 
 rm -f "$W004_STATE"
+
+W005_STATE="/tmp/stage-b1-w005-extra-entry.state.json"
+W005_OUT="/tmp/stage-b1-w005.json"
+
+echo "[stage-b1] Preparing W005 extra-entry fixture"
+cp "$STATE_PATH" "$W005_STATE"
+
+python3 - "$W005_STATE" <<'PY'
+import copy
+import json
+import sys
+
+path = sys.argv[1]
+state = json.load(open(path))
+key = next(iter(state["entries"]))
+entry = copy.deepcopy(state["entries"][key])
+
+entry["batchId"] = "stress_stage_a_100_01-batch-extra"
+entry["recipientAddress"] = "0QEXTRA_STAGE_B1_W005_TEST"
+entry["recipientIndex"] = 999999
+entry["status"] = "success"
+entry["txHash"] = "dry-run-extra-tx"
+
+extra_key = "stress_stage_a_100_01-batch-extra::0qextra_stage_b1_w005_test"
+state["entries"][extra_key] = entry
+
+open(path, "w").write(json.dumps(state, indent=2) + "\n")
+print(f"[stage-b1] W005 added entry: {extra_key}")
+PY
+
+set +e
+WATCH_CAMPAIGN_ID="$CAMPAIGN_ID" \
+WATCH_TARGETS_PATH="$TARGETS_PATH" \
+WATCH_STATE_PATH="$W005_STATE" \
+WATCH_REPORT_DIR="$REPORT_DIR" \
+WATCH_REPORT_PATH="$REPORT_PATH" \
+WATCH_OPERATORS_PATH="$OPERATORS_PATH" \
+WATCH_BATCH_SIZE="$BATCH_SIZE" \
+WATCH_NOW_ISO="$NOW_ISO" \
+npx ts-node scripts/watchStageB0.ts > "$W005_OUT"
+W005_EXIT="$?"
+set -e
+
+python3 - "$W005_OUT" "$W005_EXIT" <<'PY'
+import json
+import sys
+
+report = json.load(open(sys.argv[1]))
+exit_code = int(sys.argv[2])
+
+assert exit_code == 2
+assert report["summary"]["severity"] == "critical"
+assert report["summary"]["findings"] == 1
+finding = report["findings"][0]
+assert finding["code"] == "W005"
+assert finding["details"]["unexpectedExtraEntryCount"] == 1
+
+print("[stage-b1] W005 PASS")
+PY
+
+rm -f "$W005_STATE"
