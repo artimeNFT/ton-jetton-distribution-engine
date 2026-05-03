@@ -504,6 +504,7 @@ function detectFindings(
   input: WatcherInputConfig,
   targets: WatcherTargetsSummary,
   operators: WatcherOperatorsSummary,
+  entryKeys: WatcherEntryKeyComparisonSummary,
   state: WatcherStateSummary
 ): WatcherFinding[] {
   const findings: WatcherFinding[] = [];
@@ -564,6 +565,32 @@ function detectFindings(
         },
       });
     }
+  }
+
+  if (
+    entryKeys.enabled &&
+    entryKeys.missingExpectedEntryCount !== null &&
+    entryKeys.missingExpectedEntryCount > 0
+  ) {
+    findings.push({
+      code: "W004",
+      severity: "critical",
+      message: "Expected state entries are missing.",
+      details: { missingExpectedEntryCount: entryKeys.missingExpectedEntryCount },
+    });
+  }
+
+  if (
+    entryKeys.enabled &&
+    entryKeys.unexpectedExtraEntryCount !== null &&
+    entryKeys.unexpectedExtraEntryCount > 0
+  ) {
+    findings.push({
+      code: "W005",
+      severity: "critical",
+      message: "Unexpected extra state entries detected.",
+      details: { unexpectedExtraEntryCount: entryKeys.unexpectedExtraEntryCount },
+    });
   }
 
   if (state.batchAttemptDriftCount > 0) {
@@ -784,7 +811,7 @@ async function main(): Promise<void> {
   const operators = await loadOperatorsSummary(input);
   const entryKeys = await loadEntryKeyComparisonSummary(input);
   const state = await loadStateSummary(input);
-  const findings = detectFindings(input, targets, operators, state);
+  const findings = detectFindings(input, targets, operators, entryKeys, state);
 
   console.log(
     JSON.stringify(
