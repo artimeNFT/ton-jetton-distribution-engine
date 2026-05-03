@@ -96,3 +96,19 @@ The dispatcher must treat dry-run mode and executor forcing as separate concerns
 - Fault injection must never require setting dryRun=false.
 
 This separation prevents a fault-test path from accidentally looking like a real-execution path.
+
+## Required Stage B gate smoke
+
+Before any future real-execution work, the non-interactive Stage B gate smoke must pass:
+
+./scripts/stage-b-gate-smoke.sh
+
+This smoke verifies:
+
+- launchStageA can run without Blueprint interactive prompts.
+- DRY_RUN remains true.
+- forceExecutorInDryRun can trigger the synthetic executor path.
+- Fault injection reaches the executor.
+- rpc_transient is classified as transient_rpc.
+- Synthetic broadcast still occurs.
+- Dispatch completes without real blockchain execution.
