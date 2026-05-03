@@ -112,3 +112,21 @@ This smoke verifies:
 - rpc_transient is classified as transient_rpc.
 - Synthetic broadcast still occurs.
 - Dispatch completes without real blockchain execution.
+
+## Required Stage B full check
+
+Before any real-execution design, implementation, or testing work, the full Stage B check must pass:
+
+./scripts/stage-b-full-check.sh
+
+This command is the canonical Stage B safety gate.
+
+It verifies:
+
+- Git status is clean before the run.
+- TypeScript compilation passes.
+- Stage B-1 regression passes.
+- Stage B gate fault-injection smoke passes.
+- Git status remains clean after the run.
+
+No real-execution work should begin from a dirty repository or from a failing Stage B full check.
