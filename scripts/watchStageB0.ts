@@ -398,6 +398,26 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     }
   }
 
+  let expiredCooldownCount = 0;
+
+  if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
+    for (const entry of Object.values(entries as Record<string, unknown>)) {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        continue;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const status = record["status"];
+      const cooldownUntil = record["cooldownUntil"];
+      const cooldownAgeMs =
+        typeof cooldownUntil === "string" ? getAgeMs(input.nowIso, cooldownUntil) : null;
+
+      if (status === "cooldown" && cooldownAgeMs !== null && cooldownAgeMs > 0) {
+        expiredCooldownCount += 1;
+      }
+    }
+  }
+
   const batchAttempts: Record<string, number> = {};
 
   if (
@@ -490,6 +510,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     successWithoutTxHash,
     hardFailureMissingReason,
     submittedStuckCount,
+    expiredCooldownCount,
     batchAttempts,
     batchAttemptDriftCount,
     batchIds: Array.from(batchIds).sort(),
@@ -753,6 +774,7 @@ interface WatcherStateSummary {
   successWithoutTxHash: number;
   hardFailureMissingReason: number;
   submittedStuckCount: number;
+  expiredCooldownCount: number;
   batchIds: string[];
   batchAttempts: Record<string, number>;
   batchAttemptDriftCount: number;
