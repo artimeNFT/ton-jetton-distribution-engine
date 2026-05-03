@@ -83,3 +83,16 @@ The following artifacts must be archived for every real campaign:
 - environment variable snapshot with secrets redacted.
 - watcher output.
 - postflight reconciliation output.
+
+## Dry-run mode and fault executor forcing
+
+The dispatcher must treat dry-run mode and executor forcing as separate concerns.
+
+- dryRun controls whether real blockchain execution is allowed.
+- dryRun must be explicitly set to a boolean.
+- Missing dryRun is invalid and must fail closed.
+- forceExecutorInDryRun may be used only for synthetic dry-run fault injection.
+- forceExecutorInDryRun must not be interpreted as approval for real execution.
+- Fault injection must never require setting dryRun=false.
+
+This separation prevents a fault-test path from accidentally looking like a real-execution path.
