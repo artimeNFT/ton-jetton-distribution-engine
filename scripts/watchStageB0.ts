@@ -476,6 +476,17 @@ function detectFindings(
     }
   }
 
+  if (state.batchAttemptDriftCount > 0) {
+    findings.push({
+      code: "W013",
+      severity: "critical",
+      message: "Entry attempt numbers exceed recorded batch attempts.",
+      details: {
+        batchAttemptDriftCount: state.batchAttemptDriftCount,
+      },
+    });
+  }
+
   if (operators.duplicateOperatorIds.length > 0) {
     findings.push({
       code: "W021",
