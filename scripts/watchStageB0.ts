@@ -192,6 +192,13 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
   const entries = obj["entries"];
   const lock = obj["lock"];
 
+  const batchAttemptsRaw =
+    meta !== null &&
+    typeof meta === "object" &&
+    !Array.isArray(meta)
+      ? (meta as Record<string, unknown>)["batchAttempts"]
+      : null;
+
   const metaStatus =
     meta !== null &&
     typeof meta === "object" &&
@@ -295,6 +302,20 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     }
   }
 
+  const batchAttempts: Record<string, number> = {};
+
+  if (
+    batchAttemptsRaw !== null &&
+    typeof batchAttemptsRaw === "object" &&
+    !Array.isArray(batchAttemptsRaw)
+  ) {
+    for (const [batchId, attempt] of Object.entries(batchAttemptsRaw as Record<string, unknown>)) {
+      if (typeof attempt === "number" && Number.isFinite(attempt)) {
+        batchAttempts[batchId] = attempt;
+      }
+    }
+  }
+
   const batchIds = new Set<string>();
 
   if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
@@ -349,6 +370,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
     successWithoutTxHash,
     hardFailureMissingReason,
     submittedStuckCount,
+    batchAttempts,
     batchIds: Array.from(batchIds).sort(),
     lockActive,
     activeBatchId,
@@ -574,6 +596,7 @@ interface WatcherStateSummary {
   hardFailureMissingReason: number;
   submittedStuckCount: number;
   batchIds: string[];
+  batchAttempts: Record<string, number>;
   lockActive: boolean;
   activeBatchId: string | null;
   activeOperatorId: string | null;
