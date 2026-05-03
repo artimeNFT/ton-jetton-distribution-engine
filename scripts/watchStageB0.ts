@@ -312,6 +312,17 @@ function detectFindings(
     });
   }
 
+  if (state.hardFailureMissingReason > 0) {
+    findings.push({
+      code: "W015",
+      severity: "warning",
+      message: "Hard failure entries missing error reason.",
+      details: {
+        hardFailureMissingReason: state.hardFailureMissingReason,
+      },
+    });
+  }
+
   return findings;
 }
 
