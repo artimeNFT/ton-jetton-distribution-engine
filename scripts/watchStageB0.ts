@@ -737,6 +737,22 @@ function detectFindings(
   }
 
   if (
+    audit.configured &&
+    audit.amountMismatchRows !== null &&
+    audit.amountMismatchRows > 0
+  ) {
+    findings.push({
+      code: "W020",
+      severity: "critical",
+      message: "Audit CSV amount differs from state amount.",
+      details: {
+        reportPath: audit.reportPath,
+        amountMismatchRows: audit.amountMismatchRows,
+      },
+    });
+  }
+
+  if (
     entryKeys.enabled &&
     entryKeys.missingExpectedEntryCount !== null &&
     entryKeys.missingExpectedEntryCount > 0
