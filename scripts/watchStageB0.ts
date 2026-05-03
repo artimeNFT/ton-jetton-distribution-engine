@@ -347,6 +347,18 @@ function detectFindings(
     }
   }
 
+  if (state.submittedStuckCount > 0) {
+    findings.push({
+      code: "W009",
+      severity: "critical",
+      message: "Submitted entries are older than the configured threshold.",
+      details: {
+        submittedStuckCount: state.submittedStuckCount,
+        thresholdMs: STUCK_LOCK_THRESHOLD_MS,
+      },
+    });
+  }
+
   if (state.lockActive) {
     const lockAgeMs = getAgeMs(input.nowIso, state.lockedAt);
 
