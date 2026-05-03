@@ -429,6 +429,17 @@ function detectFindings(
     }
   }
 
+  if (operators.duplicateOperatorIds.length > 0) {
+    findings.push({
+      code: "W021",
+      severity: "critical",
+      message: "Duplicate operator IDs detected.",
+      details: {
+        duplicateOperatorIds: operators.duplicateOperatorIds,
+      },
+    });
+  }
+
   if (
     operators.configured &&
     state.activeOperatorId !== null &&
