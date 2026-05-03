@@ -4,6 +4,7 @@ import * as fs from "fs/promises";
 type WatcherStatus = "draft";
 
 type WatcherSeverity = "info" | "warning" | "critical";
+
 const STUCK_LOCK_THRESHOLD_MS = 5 * 60 * 1000;
 
 interface WatcherFinding {
@@ -153,6 +154,7 @@ async function loadTargetsSummary(input: WatcherInputConfig): Promise<WatcherTar
     metaCampaignId,
   };
 }
+
 async function loadOperatorsSummary(input: WatcherInputConfig): Promise<WatcherOperatorsSummary> {
   if (input.operatorsPath === null) {
     return {
@@ -199,6 +201,87 @@ async function loadOperatorsSummary(input: WatcherInputConfig): Promise<WatcherO
   };
 }
 
+async function loadEntryKeyComparisonSummary(
+  input: WatcherInputConfig
+): Promise<WatcherEntryKeyComparisonSummary> {
+  if (input.batchSize === null) {
+    return {
+      enabled: false,
+      missingExpectedEntryCount: null,
+      unexpectedExtraEntryCount: null,
+    };
+  }
+
+  const batchSize = input.batchSize;
+
+  const targetsRaw = await fs.readFile(input.targetsPath, "utf8");
+  const targetsParsed: unknown = JSON.parse(targetsRaw);
+
+  const recipients =
+    Array.isArray(targetsParsed)
+      ? targetsParsed
+      : targetsParsed !== null &&
+          typeof targetsParsed === "object" &&
+          !Array.isArray(targetsParsed) &&
+          Array.isArray((targetsParsed as Record<string, unknown>)["recipients"])
+        ? ((targetsParsed as Record<string, unknown>)["recipients"] as unknown[])
+        : null;
+
+  if (recipients === null) {
+    throw new Error("[watchStageB0] targets must be a JSON array or contain recipients array.");
+  }
+
+  const expectedKeys = new Set<string>();
+
+  recipients.forEach((recipient, index) => {
+    if (recipient === null || typeof recipient !== "object" || Array.isArray(recipient)) {
+      return;
+    }
+
+    const address = (recipient as Record<string, unknown>)["address"];
+    if (typeof address !== "string" || address.trim() === "") {
+      return;
+    }
+
+    const batchNumber = Math.floor(index / batchSize) + 1;
+    const batchId = `${input.campaignId}-batch-${batchNumber}`;
+    expectedKeys.add(`${batchId}::${address.trim().toLowerCase()}`);
+  });
+
+  const stateRaw = await fs.readFile(input.statePath, "utf8");
+  const stateParsed: unknown = JSON.parse(stateRaw);
+
+  if (stateParsed === null || typeof stateParsed !== "object" || Array.isArray(stateParsed)) {
+    throw new Error("[watchStageB0] state must be a JSON object.");
+  }
+
+  const entries = (stateParsed as Record<string, unknown>)["entries"];
+  const actualKeys =
+    entries !== null && typeof entries === "object" && !Array.isArray(entries)
+      ? new Set(Object.keys(entries as Record<string, unknown>))
+      : new Set<string>();
+
+  let missingExpectedEntryCount = 0;
+  for (const key of expectedKeys) {
+    if (!actualKeys.has(key)) {
+      missingExpectedEntryCount += 1;
+    }
+  }
+
+  let unexpectedExtraEntryCount = 0;
+  for (const key of actualKeys) {
+    if (!expectedKeys.has(key)) {
+      unexpectedExtraEntryCount += 1;
+    }
+  }
+
+  return {
+    enabled: true,
+    missingExpectedEntryCount,
+    unexpectedExtraEntryCount,
+  };
+}
+
 async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherStateSummary> {
   const raw = await fs.readFile(input.statePath, "utf8");
   const parsed: unknown = JSON.parse(raw);
@@ -213,9 +296,7 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
   const lock = obj["lock"];
 
   const batchAttemptsRaw =
-    meta !== null &&
-    typeof meta === "object" &&
-    !Array.isArray(meta)
+    meta !== null && typeof meta === "object" && !Array.isArray(meta)
       ? (meta as Record<string, unknown>)["batchAttempts"]
       : null;
 
@@ -269,14 +350,12 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
       const status = record["status"];
       const txHash = record["txHash"];
 
-      if (
-        status === "success" &&
-        (typeof txHash !== "string" || txHash.trim() === "")
-      ) {
+      if (status === "success" && (typeof txHash !== "string" || txHash.trim() === "")) {
         successWithoutTxHash += 1;
       }
     }
   }
+
   let hardFailureMissingReason = 0;
 
   if (entries !== null && typeof entries === "object" && !Array.isArray(entries)) {
@@ -290,11 +369,8 @@ async function loadStateSummary(input: WatcherInputConfig): Promise<WatcherState
       const lastError = record["lastError"];
       const lastErrorCode = record["lastErrorCode"];
 
-      const missingLastError =
-        typeof lastError !== "string" || lastError.trim() === "";
-
-      const missingLastErrorCode =
-        typeof lastErrorCode !== "string" || lastErrorCode.trim() === "";
+      const missingLastError = typeof lastError !== "string" || lastError.trim() === "";
+      const missingLastErrorCode = typeof lastErrorCode !== "string" || lastErrorCode.trim() === "";
 
       if (status === "hard_failure" && (missingLastError || missingLastErrorCode)) {
         hardFailureMissingReason += 1;
@@ -432,10 +508,7 @@ function detectFindings(
 ): WatcherFinding[] {
   const findings: WatcherFinding[] = [];
 
-  if (
-    targets.metaCampaignId !== null &&
-    targets.metaCampaignId !== input.campaignId
-  ) {
+  if (targets.metaCampaignId !== null && targets.metaCampaignId !== input.campaignId) {
     findings.push({
       code: "W002",
       severity: "critical",
@@ -447,10 +520,7 @@ function detectFindings(
     });
   }
 
-  if (
-    state.metaCampaignId !== null &&
-    state.metaCampaignId !== input.campaignId
-  ) {
+  if (state.metaCampaignId !== null && state.metaCampaignId !== input.campaignId) {
     findings.push({
       code: "W002",
       severity: "critical",
@@ -534,10 +604,7 @@ function detectFindings(
     });
   }
 
-  if (
-    state.activeBatchId !== null &&
-    !state.batchIds.includes(state.activeBatchId)
-  ) {
+  if (state.activeBatchId !== null && !state.batchIds.includes(state.activeBatchId)) {
     findings.push({
       code: "W011",
       severity: "critical",
@@ -645,6 +712,12 @@ interface WatcherOperatorsSummary {
   duplicateOperatorIds: string[];
 }
 
+interface WatcherEntryKeyComparisonSummary {
+  enabled: boolean;
+  missingExpectedEntryCount: number | null;
+  unexpectedExtraEntryCount: number | null;
+}
+
 interface WatcherStateSummary {
   metaCampaignId: string | null;
   metaStatus: string | null;
@@ -672,6 +745,7 @@ interface WatcherBootReport {
   artifactAccess: WatcherArtifactAccess;
   targets: WatcherTargetsSummary;
   operators: WatcherOperatorsSummary;
+  entryKeys: WatcherEntryKeyComparisonSummary;
   state: WatcherStateSummary;
   summary: WatcherFindingsSummary;
   findings: WatcherFinding[];
@@ -682,6 +756,7 @@ function buildBootReport(
   artifactAccess: WatcherArtifactAccess,
   targets: WatcherTargetsSummary,
   operators: WatcherOperatorsSummary,
+  entryKeys: WatcherEntryKeyComparisonSummary,
   state: WatcherStateSummary,
   findings: WatcherFinding[]
 ): WatcherBootReport {
@@ -695,6 +770,7 @@ function buildBootReport(
     artifactAccess,
     targets,
     operators,
+    entryKeys,
     state,
     summary: summarizeFindings(findings),
     findings,
@@ -706,9 +782,17 @@ async function main(): Promise<void> {
   const artifactAccess = await verifyArtifactAccess(input);
   const targets = await loadTargetsSummary(input);
   const operators = await loadOperatorsSummary(input);
+  const entryKeys = await loadEntryKeyComparisonSummary(input);
   const state = await loadStateSummary(input);
   const findings = detectFindings(input, targets, operators, state);
-  console.log(JSON.stringify(buildBootReport(input, artifactAccess, targets, operators, state, findings), null, 2));
+
+  console.log(
+    JSON.stringify(
+      buildBootReport(input, artifactAccess, targets, operators, entryKeys, state, findings),
+      null,
+      2
+    )
+  );
 }
 
 void main().catch((err: unknown) => {
