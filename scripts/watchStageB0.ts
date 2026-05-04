@@ -317,11 +317,13 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
   const statusIndex = headerParts.indexOf("status");
   const attemptsIndex = headerParts.indexOf("attempts");
   const walletLabelIndex = headerParts.indexOf("walletLabel");
+  const txHashIndex = headerParts.indexOf("txHash");
   const expectedAmounts = new Map<string, string>();
   const expectedStatuses = new Map<string, string>();
   const expectedBatchIds = new Map<string, string>();
   const expectedAttempts = new Map<string, string>();
   const expectedWalletLabels = new Map<string, string>();
+  const expectedTxHashes = new Map<string, string>();
   const stateRaw = await fs.readFile(input.statePath, "utf8");
   const stateParsed: unknown = JSON.parse(stateRaw);
 
@@ -341,6 +343,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
         const batchId = record["batchId"];
         const attemptNumber = record["attemptNumber"];
         const operatorId = record["operatorId"];
+        const txHash = record["txHash"];
 
         if (typeof recipientAddress === "string" && typeof amount === "string") {
           expectedAmounts.set(recipientAddress.trim().toLowerCase(), amount.trim());
@@ -361,6 +364,10 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
 
         if (typeof recipientAddress === "string" && typeof operatorId === "string") {
           expectedWalletLabels.set(recipientAddress.trim().toLowerCase(), operatorId.trim());
+        }
+
+        if (typeof recipientAddress === "string" && typeof txHash === "string") {
+          expectedTxHashes.set(recipientAddress.trim().toLowerCase(), txHash.trim());
         }
       }
     }
@@ -488,6 +495,21 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     }
   }
 
+  let txHashMismatchRows: number | null = null;
+
+  if (recipientAddressIndex >= 0 && txHashIndex >= 0) {
+    txHashMismatchRows = 0;
+    for (const line of lines.slice(1)) {
+      const parts = line.split(",");
+      const recipientAddress = (parts[recipientAddressIndex] ?? "").trim().replace(/^"|"$/g, "").toLowerCase();
+      const txHash = (parts[txHashIndex] ?? "").trim().replace(/^"|"$/g, "");
+      const expectedTxHash = expectedTxHashes.get(recipientAddress);
+      if (expectedTxHash !== undefined && txHash !== expectedTxHash) {
+        txHashMismatchRows += 1;
+      }
+    }
+  }
+
   return {
     configured: true,
     reportPath: input.reportPath,
@@ -501,7 +523,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     batchIdMismatchRows,
     attemptsMismatchRows,
     walletLabelMismatchRows,
-    txHashMismatchRows: null,
+    txHashMismatchRows,
   };
 }
 
@@ -949,6 +971,22 @@ function detectFindings(
       details: {
         reportPath: audit.reportPath,
         walletLabelMismatchRows: audit.walletLabelMismatchRows,
+      },
+    });
+  }
+
+  if (
+    audit.configured &&
+    audit.txHashMismatchRows !== null &&
+    audit.txHashMismatchRows > 0
+  ) {
+    findings.push({
+      code: "W027",
+      severity: "critical",
+      message: "Audit CSV txHash differs from state txHash.",
+      details: {
+        reportPath: audit.reportPath,
+        txHashMismatchRows: audit.txHashMismatchRows,
       },
     });
   }
