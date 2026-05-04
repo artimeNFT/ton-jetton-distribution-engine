@@ -297,6 +297,11 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
       duplicateRecipientRows: null,
       amountMismatchRows: null,
       statusMismatchRows: null,
+      campaignIdMismatchRows: null,
+      batchIdMismatchRows: null,
+      attemptsMismatchRows: null,
+      walletLabelMismatchRows: null,
+      txHashMismatchRows: null,
     };
   }
 
@@ -304,9 +309,11 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
   const lines = raw.split(/\r?\n/).filter((line) => line.trim() !== "");
   const header = lines[0] ?? "";
   const rowCount = Math.max(lines.length - 1, 0);
-  const recipientAddressIndex = header.split(",").indexOf("recipientAddress");
-  const amountIndex = header.split(",").indexOf("amount");
-  const statusIndex = header.split(",").indexOf("status");
+  const headerParts = header.split(",");
+  const campaignIdIndex = headerParts.indexOf("campaignId");
+  const recipientAddressIndex = headerParts.indexOf("recipientAddress");
+  const amountIndex = headerParts.indexOf("amount");
+  const statusIndex = headerParts.indexOf("status");
   const expectedAmounts = new Map<string, string>();
   const expectedStatuses = new Map<string, string>();
   const stateRaw = await fs.readFile(input.statePath, "utf8");
@@ -402,6 +409,19 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     }
   }
 
+  let campaignIdMismatchRows: number | null = null;
+
+  if (campaignIdIndex >= 0) {
+    campaignIdMismatchRows = 0;
+    for (const line of lines.slice(1)) {
+      const parts = line.split(",");
+      const campaignId = (parts[campaignIdIndex] ?? "").trim().replace(/^"|"$/g, "");
+      if (campaignId !== input.campaignId) {
+        campaignIdMismatchRows += 1;
+      }
+    }
+  }
+
   return {
     configured: true,
     reportPath: input.reportPath,
@@ -411,6 +431,11 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     duplicateRecipientRows,
     amountMismatchRows,
     statusMismatchRows,
+    campaignIdMismatchRows,
+    batchIdMismatchRows: null,
+    attemptsMismatchRows: null,
+    walletLabelMismatchRows: null,
+    txHashMismatchRows: null,
   };
 }
 
@@ -799,6 +824,22 @@ function detectFindings(
   }
 
   if (
+    audit.configured &&
+    audit.campaignIdMismatchRows !== null &&
+    audit.campaignIdMismatchRows > 0
+  ) {
+    findings.push({
+      code: "W023",
+      severity: "critical",
+      message: "Audit CSV campaignId differs from expected campaignId.",
+      details: {
+        reportPath: audit.reportPath,
+        campaignIdMismatchRows: audit.campaignIdMismatchRows,
+      },
+    });
+  }
+
+  if (
     entryKeys.enabled &&
     entryKeys.missingExpectedEntryCount !== null &&
     entryKeys.missingExpectedEntryCount > 0
@@ -990,6 +1031,11 @@ interface WatcherAuditSummary {
   duplicateRecipientRows: number | null;
   amountMismatchRows: number | null;
   statusMismatchRows: number | null;
+  campaignIdMismatchRows: number | null;
+  batchIdMismatchRows: number | null;
+  attemptsMismatchRows: number | null;
+  walletLabelMismatchRows: number | null;
+  txHashMismatchRows: number | null;
 }
 
 interface WatcherEntryKeyComparisonSummary {
