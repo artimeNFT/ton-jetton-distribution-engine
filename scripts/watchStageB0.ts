@@ -316,10 +316,12 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
   const amountIndex = headerParts.indexOf("amount");
   const statusIndex = headerParts.indexOf("status");
   const attemptsIndex = headerParts.indexOf("attempts");
+  const walletLabelIndex = headerParts.indexOf("walletLabel");
   const expectedAmounts = new Map<string, string>();
   const expectedStatuses = new Map<string, string>();
   const expectedBatchIds = new Map<string, string>();
   const expectedAttempts = new Map<string, string>();
+  const expectedWalletLabels = new Map<string, string>();
   const stateRaw = await fs.readFile(input.statePath, "utf8");
   const stateParsed: unknown = JSON.parse(stateRaw);
 
@@ -338,6 +340,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
         const status = record["status"];
         const batchId = record["batchId"];
         const attemptNumber = record["attemptNumber"];
+        const operatorId = record["operatorId"];
 
         if (typeof recipientAddress === "string" && typeof amount === "string") {
           expectedAmounts.set(recipientAddress.trim().toLowerCase(), amount.trim());
@@ -354,6 +357,10 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
 
         if (typeof recipientAddress === "string" && typeof attemptNumber === "number" && Number.isFinite(attemptNumber)) {
           expectedAttempts.set(recipientAddress.trim().toLowerCase(), String(attemptNumber));
+        }
+
+        if (typeof recipientAddress === "string" && typeof operatorId === "string") {
+          expectedWalletLabels.set(recipientAddress.trim().toLowerCase(), operatorId.trim());
         }
       }
     }
@@ -466,6 +473,21 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     }
   }
 
+  let walletLabelMismatchRows: number | null = null;
+
+  if (recipientAddressIndex >= 0 && walletLabelIndex >= 0) {
+    walletLabelMismatchRows = 0;
+    for (const line of lines.slice(1)) {
+      const parts = line.split(",");
+      const recipientAddress = (parts[recipientAddressIndex] ?? "").trim().replace(/^"|"$/g, "").toLowerCase();
+      const walletLabel = (parts[walletLabelIndex] ?? "").trim().replace(/^"|"$/g, "");
+      const expectedWalletLabel = expectedWalletLabels.get(recipientAddress);
+      if (expectedWalletLabel !== undefined && walletLabel !== expectedWalletLabel) {
+        walletLabelMismatchRows += 1;
+      }
+    }
+  }
+
   return {
     configured: true,
     reportPath: input.reportPath,
@@ -478,7 +500,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     campaignIdMismatchRows,
     batchIdMismatchRows,
     attemptsMismatchRows,
-    walletLabelMismatchRows: null,
+    walletLabelMismatchRows,
     txHashMismatchRows: null,
   };
 }
@@ -911,6 +933,22 @@ function detectFindings(
       details: {
         reportPath: audit.reportPath,
         attemptsMismatchRows: audit.attemptsMismatchRows,
+      },
+    });
+  }
+
+  if (
+    audit.configured &&
+    audit.walletLabelMismatchRows !== null &&
+    audit.walletLabelMismatchRows > 0
+  ) {
+    findings.push({
+      code: "W026",
+      severity: "critical",
+      message: "Audit CSV walletLabel differs from state operatorId.",
+      details: {
+        reportPath: audit.reportPath,
+        walletLabelMismatchRows: audit.walletLabelMismatchRows,
       },
     });
   }
