@@ -97,6 +97,22 @@ The dispatcher must treat dry-run mode and executor forcing as separate concerns
 
 This separation prevents a fault-test path from accidentally looking like a real-execution path.
 
+## Legacy send path blockers
+
+The following scripts contain active send paths and must be quarantined or reviewed before any mainnet work:
+
+- scripts/deployJettonMaster.ts
+- scripts/vaultDistribution.ts
+- scripts/batchStatusUpdate.ts
+- scripts/bulkMint.ts
+- scripts/vaultDistribution_linkTest.ts
+
+These paths are future mainnet blockers.
+
+## updateMetadata status
+
+scripts/updateMetadata.ts currently has no active send path detected, but its live-execution guard is legacy and must be reviewed before any real execution work.
+
 ## Required Stage B gate smoke
 
 Before any future real-execution work, the non-interactive Stage B gate smoke must pass:
@@ -127,6 +143,7 @@ It verifies:
 - TypeScript compilation passes.
 - Stage B-1 regression passes.
 - Stage B gate fault-injection smoke passes.
+- Real execution gate smoke passes.
 - Git status remains clean after the run.
 
 No real-execution work should begin from a dirty repository or from a failing Stage B full check.
