@@ -459,7 +459,12 @@ interface RunReport {
 
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 
+function assertLegacyScriptBlocked(): void {
+  throw new Error("[LEGACY_SCRIPT_BLOCKED] This legacy live-send script is quarantined pending review before any testnet/mainnet execution.");
+}
+
 export async function run(provider: NetworkProvider): Promise<void> {
+  assertLegacyScriptBlocked();
   const campaignId = ENV.campaignId;
 
   log("info", formatMessage("SYS_READY"));

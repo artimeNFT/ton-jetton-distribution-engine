@@ -354,7 +354,12 @@ async function sendWithRetry(
 //  Entry point
 // ════════════════════════════════════════════════════════════════
 
+function assertLegacyScriptBlocked(): void {
+  throw new Error("[LEGACY_SCRIPT_BLOCKED] This legacy live-send script is quarantined pending review before any testnet/mainnet execution.");
+}
+
 export async function run(provider: NetworkProvider): Promise<void> {
+  assertLegacyScriptBlocked();
 
     // ── 1. Load & validate SYNC_QUEUE from targets.json ──────────
     console.log(`📂 Loading compliance records from targets.json…`);

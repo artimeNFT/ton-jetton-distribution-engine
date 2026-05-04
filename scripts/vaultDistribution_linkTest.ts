@@ -26,7 +26,12 @@ function buildTextCommentCell(text: string): Cell {
     .endCell();
 }
 
+function assertLegacyScriptBlocked(): void {
+  throw new Error("[LEGACY_SCRIPT_BLOCKED] This legacy live-send script is quarantined pending review before any testnet/mainnet execution.");
+}
+
 export async function run(provider: NetworkProvider): Promise<void> {
+  assertLegacyScriptBlocked();
   const masterEnv = process.env.JETTON_MASTER;
   if (!masterEnv) {
     throw new Error("JETTON_MASTER environment variable is not set.");

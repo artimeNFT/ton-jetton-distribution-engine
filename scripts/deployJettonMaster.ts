@@ -18,7 +18,12 @@ function buildOffchainContent(url: string): Cell {
     .endCell();
 }
 
+function assertLegacyScriptBlocked(): void {
+  throw new Error("[LEGACY_SCRIPT_BLOCKED] This legacy live-send script is quarantined pending review before any testnet/mainnet execution.");
+}
+
 export async function run(provider: NetworkProvider) {
+  assertLegacyScriptBlocked();
   const sender = provider.sender().address;
   if (!sender) {
     throw new Error("Sender address is not available.");
