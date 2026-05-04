@@ -485,3 +485,56 @@ print("[stage-b1] W025 PASS")
 PY
 
 rm -f "$W025_CSV"
+
+W026_CSV="/tmp/stage-b1-w026-wallet-label-mismatch.csv"
+W026_OUT="/tmp/stage-b1-w026.json"
+
+echo "[stage-b1] Preparing W026 audit wallet-label-mismatch fixture"
+
+python3 - "$REPORT_PATH" "$W026_CSV" <<'PY'
+import csv
+import sys
+from pathlib import Path
+
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+
+rows = list(csv.reader(src.open(newline="")))
+wallet_index = rows[0].index("walletLabel")
+rows[1][wallet_index] = "wrong_operator"
+
+csv.writer(dst.open("w", newline="")).writerows(rows)
+print(f"[stage-b1] W026 patched walletLabel: {rows[1][wallet_index]}")
+PY
+
+set +e
+WATCH_CAMPAIGN_ID="$CAMPAIGN_ID" \
+WATCH_TARGETS_PATH="$TARGETS_PATH" \
+WATCH_STATE_PATH="$STATE_PATH" \
+WATCH_REPORT_DIR="$REPORT_DIR" \
+WATCH_REPORT_PATH="$W026_CSV" \
+WATCH_OPERATORS_PATH="$OPERATORS_PATH" \
+WATCH_BATCH_SIZE="$BATCH_SIZE" \
+WATCH_NOW_ISO="$NOW_ISO" \
+npx ts-node scripts/watchStageB0.ts > "$W026_OUT"
+W026_EXIT="$?"
+set -e
+
+python3 - "$W026_OUT" "$W026_EXIT" <<'PY'
+import json
+import sys
+
+report = json.load(open(sys.argv[1]))
+exit_code = int(sys.argv[2])
+
+assert exit_code == 2
+assert report["summary"]["severity"] == "critical"
+assert report["summary"]["findings"] == 1
+finding = report["findings"][0]
+assert finding["code"] == "W026"
+assert finding["details"]["walletLabelMismatchRows"] == 1
+
+print("[stage-b1] W026 PASS")
+PY
+
+rm -f "$W026_CSV"
