@@ -379,3 +379,56 @@ print("[stage-b1] W023 PASS")
 PY
 
 rm -f "$W023_CSV"
+
+W024_CSV="/tmp/stage-b1-w024-batch-mismatch.csv"
+W024_OUT="/tmp/stage-b1-w024.json"
+
+echo "[stage-b1] Preparing W024 audit batch-mismatch fixture"
+
+python3 - "$REPORT_PATH" "$W024_CSV" <<'PY'
+import csv
+import sys
+from pathlib import Path
+
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+
+rows = list(csv.reader(src.open(newline="")))
+batch_index = rows[0].index("batchId")
+rows[1][batch_index] = "wrong_batch_id"
+
+csv.writer(dst.open("w", newline="")).writerows(rows)
+print(f"[stage-b1] W024 patched batchId: {rows[1][batch_index]}")
+PY
+
+set +e
+WATCH_CAMPAIGN_ID="$CAMPAIGN_ID" \
+WATCH_TARGETS_PATH="$TARGETS_PATH" \
+WATCH_STATE_PATH="$STATE_PATH" \
+WATCH_REPORT_DIR="$REPORT_DIR" \
+WATCH_REPORT_PATH="$W024_CSV" \
+WATCH_OPERATORS_PATH="$OPERATORS_PATH" \
+WATCH_BATCH_SIZE="$BATCH_SIZE" \
+WATCH_NOW_ISO="$NOW_ISO" \
+npx ts-node scripts/watchStageB0.ts > "$W024_OUT"
+W024_EXIT="$?"
+set -e
+
+python3 - "$W024_OUT" "$W024_EXIT" <<'PY'
+import json
+import sys
+
+report = json.load(open(sys.argv[1]))
+exit_code = int(sys.argv[2])
+
+assert exit_code == 2
+assert report["summary"]["severity"] == "critical"
+assert report["summary"]["findings"] == 1
+finding = report["findings"][0]
+assert finding["code"] == "W024"
+assert finding["details"]["batchIdMismatchRows"] == 1
+
+print("[stage-b1] W024 PASS")
+PY
+
+rm -f "$W024_CSV"
