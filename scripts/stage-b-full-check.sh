@@ -10,6 +10,9 @@ if [ -n "$BEFORE_STATUS" ]; then
   exit 1
 fi
 
+echo "[stage-b-full] Blueprint build"
+npx blueprint build --all
+
 echo "[stage-b-full] TypeScript check"
 npx tsc --noEmit
 
