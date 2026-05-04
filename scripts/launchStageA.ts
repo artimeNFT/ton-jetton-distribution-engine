@@ -97,6 +97,19 @@ function optionalEnv(name: string, fallback: string): string {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : fallback;
 }
 
+function validateRealExecutionGate(campaignId: string, isDryRun: boolean): void {
+  if (isDryRun) return;
+  if (process.env["REAL_EXECUTION_ENABLED"] !== "true") {
+    throw new Error('[launchStageA] Real execution gate blocked: DRY_RUN=false requires REAL_EXECUTION_ENABLED="true".');
+  }
+  if (process.env["CONFIRM_REAL_CHAIN_EXECUTION"] !== campaignId) {
+    throw new Error(`[launchStageA] Real execution gate blocked: CONFIRM_REAL_CHAIN_EXECUTION must exactly match CAMPAIGN_ID "${campaignId}".`);
+  }
+  if (process.env["STAGE_B_FULL_CHECK_REQUIRED"] !== "true") {
+    throw new Error('[launchStageA] Real execution gate blocked: DRY_RUN=false requires STAGE_B_FULL_CHECK_REQUIRED="true".');
+  }
+}
+
 /**
  * Reads an optional environment variable as a non-negative integer.
  *
@@ -753,13 +766,15 @@ export async function run(_provider: NetworkProvider): Promise<void> {
 
   const operatorsFilePath = path.resolve("data/operators.json");
 
-  // ── 2. Guard: live execution is not implemented at Stage A ────────────────
+  // ── 2. Real execution gate Phase 1: guard only ────────────────────────────
+
+  validateRealExecutionGate(campaignId, isDryRun);
 
   if (!isDryRun) {
     throw new Error(
-      "[launchStageA] DRY_RUN=false is not supported at Stage A. " +
+      "[launchStageA] Real execution gate passed, but live execution remains blocked. " +
         "A live MintExecutor has not been implemented. " +
-        "Set DRY_RUN=true or implement the executor before enabling live mode."
+        "No signing, sending, or broadcasting is available in Phase 1."
     );
   }
 
