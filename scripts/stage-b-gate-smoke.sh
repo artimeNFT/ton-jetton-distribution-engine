@@ -29,7 +29,7 @@ echo "[stage-b-gate] Running non-interactive fault-injection smoke"
 
 set +e
 CAMPAIGN_ID=stress_stage_a_100_01 \
-TARGETS_PATH=./data/targets.100.01.json \
+TARGETS_PATH=./test-fixtures/stage-b1/targets.json \
 STATE_PATH="$SMOKE_ROOT/stress_stage_a_100_01.state.json" \
 REPORT_DIR="$SMOKE_REPORT_DIR" \
 DRY_RUN=true \
