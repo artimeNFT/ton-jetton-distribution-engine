@@ -22,6 +22,9 @@ echo "[stage-b-full] Stage B gate smoke"
 echo "[stage-b-full] Real execution gate smoke"
 ./scripts/stage-b-real-gate-smoke.sh
 
+echo "[stage-b-full] updateMetadata gate smoke"
+./scripts/stage-b-update-metadata-gate-smoke.sh
+
 echo "[stage-b-full] Checking clean git state after run"
 AFTER_STATUS="$(git status --short)"
 

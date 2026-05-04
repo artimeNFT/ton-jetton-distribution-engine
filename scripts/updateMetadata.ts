@@ -1,5 +1,5 @@
 /**
- * @file scripts/launchStageA.ts
+ * @file scripts/updateMetadata.ts
  * @description Stage A Composition Root — Identity & Mint engine launcher.
  *
  * Wires all verified runtime dependencies and invokes the Dispatcher.
@@ -72,7 +72,7 @@ function requireEnv(name: string): string {
   const v = process.env[name];
   if (typeof v !== "string" || v.trim() === "") {
     throw new Error(
-      `[launchStageA] Required environment variable "${name}" is not set or is empty.`
+      `[updateMetadata] Required environment variable "${name}" is not set or is empty.`
     );
   }
   return v.trim();
@@ -82,6 +82,20 @@ function optionalEnv(name: string, fallback: string): string {
   const v = process.env[name];
   return typeof v === "string" && v.trim() !== "" ? v.trim() : fallback;
 }
+
+function validateRealExecutionGate(campaignId: string, isDryRun: boolean): void {
+  if (isDryRun) return;
+  if (process.env["REAL_EXECUTION_ENABLED"] !== "true") {
+    throw new Error('[updateMetadata] Real execution gate blocked: DRY_RUN=false requires REAL_EXECUTION_ENABLED="true".');
+  }
+  if (process.env["CONFIRM_REAL_CHAIN_EXECUTION"] !== campaignId) {
+    throw new Error(`[updateMetadata] Real execution gate blocked: CONFIRM_REAL_CHAIN_EXECUTION must exactly match CAMPAIGN_ID "${campaignId}".`);
+  }
+  if (process.env["STAGE_B_FULL_CHECK_REQUIRED"] !== "true") {
+    throw new Error('[updateMetadata] Real execution gate blocked: DRY_RUN=false requires STAGE_B_FULL_CHECK_REQUIRED="true".');
+  }
+}
+
 
 // ─── Targets Loader ───────────────────────────────────────────────────────────
 
@@ -101,7 +115,7 @@ async function loadRecipients(targetsPath: string): Promise<RawRecipient[]> {
     raw = await fs.readFile(abs, "utf8");
   } catch (err: unknown) {
     throw new Error(
-      `[launchStageA] Cannot read targets file at "${abs}": ${errorMessage(err)}`
+      `[updateMetadata] Cannot read targets file at "${abs}": ${errorMessage(err)}`
     );
   }
 
@@ -110,7 +124,7 @@ async function loadRecipients(targetsPath: string): Promise<RawRecipient[]> {
     parsed = JSON.parse(raw);
   } catch (err: unknown) {
     throw new Error(
-      `[launchStageA] targets.json at "${abs}" contains invalid JSON: ${errorMessage(err)}`
+      `[updateMetadata] targets.json at "${abs}" contains invalid JSON: ${errorMessage(err)}`
     );
   }
 
@@ -127,7 +141,7 @@ async function loadRecipients(targetsPath: string): Promise<RawRecipient[]> {
     list = (parsed as Record<string, unknown>)["recipients"];
   } else {
     throw new Error(
-      `[launchStageA] targets.json at "${abs}" must be either a root JSON array ` +
+      `[updateMetadata] targets.json at "${abs}" must be either a root JSON array ` +
         `or an object with a "recipients" array field.`
     );
   }
@@ -135,7 +149,7 @@ async function loadRecipients(targetsPath: string): Promise<RawRecipient[]> {
   const arr = list as unknown[];
   if (arr.length === 0) {
     throw new Error(
-      `[launchStageA] targets.json at "${abs}" contains zero recipients.`
+      `[updateMetadata] targets.json at "${abs}" contains zero recipients.`
     );
   }
 
@@ -144,19 +158,19 @@ async function loadRecipients(targetsPath: string): Promise<RawRecipient[]> {
     const item = arr[i];
     if (item === null || typeof item !== "object" || Array.isArray(item)) {
       throw new Error(
-        `[launchStageA] targets.json: entry at index ${i} must be an object.`
+        `[updateMetadata] targets.json: entry at index ${i} must be an object.`
       );
     }
     const o = item as Record<string, unknown>;
     if (typeof o["address"] !== "string" || (o["address"] as string).trim() === "") {
       throw new Error(
-        `[launchStageA] targets.json: entry at index ${i} is missing a non-empty "address" field.`
+        `[updateMetadata] targets.json: entry at index ${i} is missing a non-empty "address" field.`
       );
     }
     const amt = o["amount"];
     if (typeof amt !== "string" && typeof amt !== "number") {
       throw new Error(
-        `[launchStageA] targets.json: entry at index ${i} is missing an "amount" field ` +
+        `[updateMetadata] targets.json: entry at index ${i} is missing an "amount" field ` +
           `(must be a string or number).`
       );
     }
@@ -176,7 +190,7 @@ async function loadFirstEnabledMaxBatchSize(
     raw = await fs.readFile(abs, "utf8");
   } catch (err: unknown) {
     throw new Error(
-      `[launchStageA] Cannot read operators file at "${abs}" for batchSize fallback: ` +
+      `[updateMetadata] Cannot read operators file at "${abs}" for batchSize fallback: ` +
         errorMessage(err)
     );
   }
@@ -186,13 +200,13 @@ async function loadFirstEnabledMaxBatchSize(
     parsed = JSON.parse(raw);
   } catch (err: unknown) {
     throw new Error(
-      `[launchStageA] operators.json at "${abs}" contains invalid JSON: ${errorMessage(err)}`
+      `[updateMetadata] operators.json at "${abs}" contains invalid JSON: ${errorMessage(err)}`
     );
   }
 
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new Error(
-      `[launchStageA] operators.json at "${abs}" must be a non-empty JSON array.`
+      `[updateMetadata] operators.json at "${abs}" must be a non-empty JSON array.`
     );
   }
 
@@ -200,7 +214,7 @@ async function loadFirstEnabledMaxBatchSize(
 
   if (first === undefined) {
     throw new Error(
-      `[launchStageA] No enabled operator found in "${abs}". ` +
+      `[updateMetadata] No enabled operator found in "${abs}". ` +
         `Cannot derive a default batchSize. Set BATCH_SIZE explicitly.`
     );
   }
@@ -208,7 +222,7 @@ async function loadFirstEnabledMaxBatchSize(
   const maxBatchSize = Number(first.maxBatchSize);
   if (!Number.isInteger(maxBatchSize) || maxBatchSize < 1) {
     throw new Error(
-      `[launchStageA] Operator "${first.id}" has an invalid maxBatchSize (${String(first.maxBatchSize)}). ` +
+      `[updateMetadata] Operator "${first.id}" has an invalid maxBatchSize (${String(first.maxBatchSize)}). ` +
         `Set BATCH_SIZE explicitly.`
     );
   }
@@ -353,13 +367,15 @@ export async function run(_provider: NetworkProvider): Promise<void> {
 
   const operatorsFilePath = path.resolve("data/operators.json");
 
-  // ── 2. Guard: live execution is not implemented at Stage A ────────────────
+  // ── 2. Real execution gate Phase 1: guard only ────────────────────────────
+
+  validateRealExecutionGate(campaignId, isDryRun);
 
   if (!isDryRun) {
     throw new Error(
-      "[launchStageA] DRY_RUN=false is not supported at Stage A. " +
+      "[updateMetadata] Real execution gate passed, but live execution remains blocked. " +
         "A live MintExecutor has not been implemented. " +
-        "Set DRY_RUN=true or implement the executor before enabling live mode."
+        "No signing, sending, or broadcasting is available in Phase 1."
     );
   }
 
@@ -380,7 +396,7 @@ export async function run(_provider: NetworkProvider): Promise<void> {
   console.log(
     JSON.stringify({
       level: "info",
-      msg: "[launchStageA] Composition Root — wiring dependencies",
+      msg: "[updateMetadata] Composition Root — wiring dependencies",
       campaignId,
       isDryRun,
       stateDir,
@@ -400,7 +416,7 @@ export async function run(_provider: NetworkProvider): Promise<void> {
     const parsed = Number(batchSizeEnv.trim());
     if (!Number.isInteger(parsed) || parsed < 1) {
       throw new Error(
-        `[launchStageA] BATCH_SIZE must be a positive integer. Got: "${batchSizeEnv}".`
+        `[updateMetadata] BATCH_SIZE must be a positive integer. Got: "${batchSizeEnv}".`
       );
     }
     batchSize = parsed;
@@ -409,7 +425,7 @@ export async function run(_provider: NetworkProvider): Promise<void> {
     console.log(
       JSON.stringify({
         level: "info",
-        msg: "[launchStageA] BATCH_SIZE not set — derived from first enabled operator",
+        msg: "[updateMetadata] BATCH_SIZE not set — derived from first enabled operator",
         batchSize,
       })
     );
@@ -422,7 +438,7 @@ export async function run(_provider: NetworkProvider): Promise<void> {
   console.log(
     JSON.stringify({
       level: "info",
-      msg: "[launchStageA] Targets loaded",
+      msg: "[updateMetadata] Targets loaded",
       count: rawRecipients.length,
       targetsPath,
     })
@@ -485,7 +501,7 @@ export async function run(_provider: NetworkProvider): Promise<void> {
   console.log(
     JSON.stringify({
       level: "info",
-      msg: "[launchStageA] Handing off to Dispatcher",
+      msg: "[updateMetadata] Handing off to Dispatcher",
       campaignId,
       totalRecipients: recipients.length,
       batchSize,
@@ -500,7 +516,7 @@ export async function run(_provider: NetworkProvider): Promise<void> {
   console.log(
     JSON.stringify({
       level: "info",
-      msg: "[launchStageA] Dispatch complete",
+      msg: "[updateMetadata] Dispatch complete",
       ...report,
     })
   );
