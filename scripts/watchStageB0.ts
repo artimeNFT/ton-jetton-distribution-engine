@@ -315,9 +315,11 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
   const recipientAddressIndex = headerParts.indexOf("recipientAddress");
   const amountIndex = headerParts.indexOf("amount");
   const statusIndex = headerParts.indexOf("status");
+  const attemptsIndex = headerParts.indexOf("attempts");
   const expectedAmounts = new Map<string, string>();
   const expectedStatuses = new Map<string, string>();
   const expectedBatchIds = new Map<string, string>();
+  const expectedAttempts = new Map<string, string>();
   const stateRaw = await fs.readFile(input.statePath, "utf8");
   const stateParsed: unknown = JSON.parse(stateRaw);
 
@@ -335,6 +337,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
         const amount = record["amount"];
         const status = record["status"];
         const batchId = record["batchId"];
+        const attemptNumber = record["attemptNumber"];
 
         if (typeof recipientAddress === "string" && typeof amount === "string") {
           expectedAmounts.set(recipientAddress.trim().toLowerCase(), amount.trim());
@@ -347,6 +350,10 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
 
         if (typeof recipientAddress === "string" && typeof batchId === "string") {
           expectedBatchIds.set(recipientAddress.trim().toLowerCase(), batchId.trim());
+        }
+
+        if (typeof recipientAddress === "string" && typeof attemptNumber === "number" && Number.isFinite(attemptNumber)) {
+          expectedAttempts.set(recipientAddress.trim().toLowerCase(), String(attemptNumber));
         }
       }
     }
@@ -444,6 +451,21 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     }
   }
 
+  let attemptsMismatchRows: number | null = null;
+
+  if (recipientAddressIndex >= 0 && attemptsIndex >= 0) {
+    attemptsMismatchRows = 0;
+    for (const line of lines.slice(1)) {
+      const parts = line.split(",");
+      const recipientAddress = (parts[recipientAddressIndex] ?? "").trim().replace(/^"|"$/g, "").toLowerCase();
+      const attempts = (parts[attemptsIndex] ?? "").trim().replace(/^"|"$/g, "");
+      const expectedAttemptsValue = expectedAttempts.get(recipientAddress);
+      if (expectedAttemptsValue !== undefined && attempts !== expectedAttemptsValue) {
+        attemptsMismatchRows += 1;
+      }
+    }
+  }
+
   return {
     configured: true,
     reportPath: input.reportPath,
@@ -455,7 +477,7 @@ async function loadAuditSummary(input: WatcherInputConfig, targets: WatcherTarge
     statusMismatchRows,
     campaignIdMismatchRows,
     batchIdMismatchRows,
-    attemptsMismatchRows: null,
+    attemptsMismatchRows,
     walletLabelMismatchRows: null,
     txHashMismatchRows: null,
   };
@@ -873,6 +895,22 @@ function detectFindings(
       details: {
         reportPath: audit.reportPath,
         batchIdMismatchRows: audit.batchIdMismatchRows,
+      },
+    });
+  }
+
+  if (
+    audit.configured &&
+    audit.attemptsMismatchRows !== null &&
+    audit.attemptsMismatchRows > 0
+  ) {
+    findings.push({
+      code: "W025",
+      severity: "critical",
+      message: "Audit CSV attempts differs from state attemptNumber.",
+      details: {
+        reportPath: audit.reportPath,
+        attemptsMismatchRows: audit.attemptsMismatchRows,
       },
     });
   }
