@@ -1,0 +1,616 @@
+{
+  "_comment": "Stage A stress test — 100 synthetic recipients — generated 2026-05-02T15:08:42.487Z",
+  "meta": {
+    "version": "1.0.0",
+    "campaignId": "stress_stage_a_100_01",
+    "description": "Synthetic stress dataset: 100 unique recipients at 1000000000 nanotons each",
+    "createdAt": "2026-05-02T15:08:42.487Z",
+    "createdBy": "generator"
+  },
+  "defaults": {
+    "tag": "stress100",
+    "memo": ""
+  },
+  "recipients": [
+    {
+      "address": "0QALVNQyfcDepN9XWRVPhUqsO4HWGgDc0TL18I1b9fA2PWrf",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-001"
+    },
+    {
+      "address": "0QC_q7LfHy586xdyUXifg5uHuhn7qchoV1dFk36dkyeZDrB6",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-002"
+    },
+    {
+      "address": "0QBMGyTWH2ZtIYfIOfg743LfsWQ5qyQhYksk3QnMeT7NIDdt",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-003"
+    },
+    {
+      "address": "0QAcvyznWkvJ9CLHwAmSIFonIIJNKsXYR60PHSfEjJvYMXxY",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-004"
+    },
+    {
+      "address": "0QAJ_sKJEY8COgRBoQGYbnOlck6fzYhDRP90YFBvxBRDk_Fp",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-005"
+    },
+    {
+      "address": "0QAvXvol8x4x5Y9oRDtKot6M4Aefo0ltnTrcdoP1dfGVVudo",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-006"
+    },
+    {
+      "address": "0QACBlqi_NnKmJnyMQt8gjYBJfPgvXkzKtz1n9FJ3I4F49EW",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-007"
+    },
+    {
+      "address": "0QBVkNO916zl6UHtGPv54Qjtmc7MIhEi60b_DLY8bfAtaX6X",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-008"
+    },
+    {
+      "address": "0QDwEyXgKM7qUmHdW855jLqxaYEp-8LpxVbDkh4w0O6Gl8dM",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-009"
+    },
+    {
+      "address": "0QAiDFv2qdz7wBf_ZKnt6ADo_Rj_haCjlsBmQF2ip-aamNWG",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-010"
+    },
+    {
+      "address": "0QDg5X5DF-ga31kYWH5JDtAZBCHI_Q2UWI_fEGITUmRJy6gJ",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-011"
+    },
+    {
+      "address": "0QBeNHZDS3cIZlkHj3qvglNGJuHfoc6g7PicDkEPh3SFWZHP",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-012"
+    },
+    {
+      "address": "0QDV16QEG4APq5O0uHMwZ9pQibEzjHH4EXNHs8JSisN0zGpl",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-013"
+    },
+    {
+      "address": "0QANVA6wIM17Wm_qfaTnsiK1hTJOJ175U43ii6G85j5fkFal",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-014"
+    },
+    {
+      "address": "0QAGr6REZukqcAosoOcPMHdOHr8I7uCBtjPjs_wQpM-IVrw5",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-015"
+    },
+    {
+      "address": "0QAJNkQPvp3eBkA9XipBSJ6ZaFHUL3SGQxrzk3jeDfssOCzE",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-016"
+    },
+    {
+      "address": "0QBgWEnYsb1CCidChCFn39v0_AmQuzsDcSxPMF99satgLccA",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-017"
+    },
+    {
+      "address": "0QCoe85-KecVPsawI4EL8hEev45sO4ifT2LY4xhvlTVqHJtg",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-018"
+    },
+    {
+      "address": "0QAfZuawC4JsDcoyIaQ74IlOtIEIZ_qMKWu6o3j370R7405b",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-019"
+    },
+    {
+      "address": "0QBUWxS5fWvvMEdykHGxOeYp0dHxv6NUUuqD5cGCIEn4ESkx",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-020"
+    },
+    {
+      "address": "0QB_fc-aD0EF8tU05Mc0tpEyFwYgroWgZN6miWff2jiKxaYq",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-021"
+    },
+    {
+      "address": "0QDZ39DEONN2h1y2dBmJWgAKk0W7AGaeP2EFDa9SF1pZnVRD",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-022"
+    },
+    {
+      "address": "0QAhaoHx_9rIQ1I689doBkXFnyaRuh3N15SVaoy8sxDpjoCW",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-023"
+    },
+    {
+      "address": "0QBdZlUoVwHWfk9vthTn8b81EiV_0XkLmoR4-rdQQMPL6hf0",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-024"
+    },
+    {
+      "address": "0QBAnoLDOLv4ZIRAX-vwyukMxzO309NyQRelyfXap5QQcbtg",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-025"
+    },
+    {
+      "address": "0QBPROu7lXCtBdWULAvi3wtcdk4MTEV9HLviZrcQj_dpQmlE",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-026"
+    },
+    {
+      "address": "0QCzbFCHRFARgX-WW2u3nkp1Isytqqun4LuP3VBVECLCoeFP",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-027"
+    },
+    {
+      "address": "0QCM8llQB5Tj1Koe-K7O4tdb_cZ8JgNQuZWZennXW-u6-6no",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-028"
+    },
+    {
+      "address": "0QAnWevJBxyKPtc0GL3E8_jazusacrQcmBaSrROyxiBEvYpH",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-029"
+    },
+    {
+      "address": "0QBnsk-6ZBq5KE0plXP0dYbxDJxrzCdQjsJlhzkxTQ50ck5g",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-030"
+    },
+    {
+      "address": "0QCQOlqiFeeEOHZj1zlVfBPupAPdwH2EQOvNNebjVMYALHGn",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-031"
+    },
+    {
+      "address": "0QBpLq2yRd48aJhLkUx2zJlnSUnvtS3kJi7r3o1rcQqbja4u",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-032"
+    },
+    {
+      "address": "0QCSXfg0MY6JjgRMCOXUe8gYvv6L7whMXRYDqK_hhaUud37f",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-033"
+    },
+    {
+      "address": "0QAwe7Mh2beZ61tprCFTKSQLMKTbIm1Uc3a78a9KAhecmlSc",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-034"
+    },
+    {
+      "address": "0QDlcw_cu8TWe-lKqRrRjx67UwLmH4pdSV96GfsUaUM1-PMw",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-035"
+    },
+    {
+      "address": "0QCqVd65T90kTuYCwpYm4OoM8d1q6w90ZWXwifBbZ6PuFQ64",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-036"
+    },
+    {
+      "address": "0QCAR_If283AyD1hNIUkIsP2P8ScizBci83DJOKnYKfLZbZn",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-037"
+    },
+    {
+      "address": "0QBiysOvrcUZUKivoKOH-U7U5q_-TU-1tRslD2gJFnez6AEe",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-038"
+    },
+    {
+      "address": "0QA7ChvDXuDFXss4l8BoXVLJXcMIufe9wJsBxNzaaWksBtMB",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-039"
+    },
+    {
+      "address": "0QBlGQvHKAi9J_QKm-1vtbfh98iQn3mp7hU7PfAPQAc1omni",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-040"
+    },
+    {
+      "address": "0QATjb7MNH7Z83jQ_aKfbqWtX9QPTGrfq7pvWZfnqJKi_ehK",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-041"
+    },
+    {
+      "address": "0QBH4CTAJ4PVsiDrcIqUik4dieYLFXqJ5psGEV6QxChanxqd",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-042"
+    },
+    {
+      "address": "0QDdD2W4JkHFp46a0iFX9314iR5Uhhu8Tm31KGRYviOaxGe7",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-043"
+    },
+    {
+      "address": "0QBgYL7BjQnte6sinlAXahN3gjlSyr6Y3mulGKh8vo1c3EPg",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-044"
+    },
+    {
+      "address": "0QCeQ_FYCCA60kxWSgl2As8jDsbrlQceI9mTodU_TNdRHpvh",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-045"
+    },
+    {
+      "address": "0QDTb2ylHlsEowXU6nI74LFE_4BGKjvHtPnnGY7X4Rxp7t2w",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-046"
+    },
+    {
+      "address": "0QDUumIzMxhVE-FMmVEtI49hIIA42jXZi0ZiRriDZ7PuDd-i",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-047"
+    },
+    {
+      "address": "0QCXE588peKvlnrTQPOdMJYXXkQF9hcVNJGvT-v0V6V5G1in",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-048"
+    },
+    {
+      "address": "0QDtlI_YtHp-wTOy62IRmsvvvfcZNGR5JyUEBHTlYipZkjfo",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-049"
+    },
+    {
+      "address": "0QDARxoXlGOfPHZ80QJMN2TV0uNbk2WHRquVc6o_RCUkIKs-",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-050"
+    },
+    {
+      "address": "0QCfY2hKqr-EQI7kjk6u_8Myc0MyfO3d-r2ZXXB56mcoZdmW",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-051"
+    },
+    {
+      "address": "0QATiLNXqrM9fwf-ElZ0x0p_8smOCJB_vpSN17mPBs_PMPYy",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-052"
+    },
+    {
+      "address": "0QBsReutLsPfPXajG4gUQhXP6peOZgJ_uzLhRUVyUVsonuGZ",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-053"
+    },
+    {
+      "address": "0QCeIAybcsNtB6eWxYs2d4I1IevSLW2v6AUzkmawn0rhkfP3",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-054"
+    },
+    {
+      "address": "0QB3gxsdfhs1FpZWVuGzQn5eVUzcYd3BWTbIzNQrF9QHZ9mI",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-055"
+    },
+    {
+      "address": "0QC-Y1KTCa3Dqq5_ey4XJcLWTuQ4yg4Y9q__U_Pi6AVAVHc4",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-056"
+    },
+    {
+      "address": "0QADFFy0GAY7y-Mp-Cn-dya6OCp8N9WWDj0eRzvQA8EI5uJS",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-057"
+    },
+    {
+      "address": "0QCyV0BONLgaZ9xJujD1SKfMt--jPw6cg1LAH4-Ebi6G9Qvi",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-058"
+    },
+    {
+      "address": "0QDUM6gOEScIeZ_tl3A9JG50kIVwlhweGe0j68_4xvqoPuIF",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-059"
+    },
+    {
+      "address": "0QDG19Be0sd-P3mXN7kCBNeynBsa8Flea1WvjCbCkG1WhoEE",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-060"
+    },
+    {
+      "address": "0QDg8jJ04QwoZjtmTmh0xmfG2HFM0GCJRDPsB__h6aXetBVS",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-061"
+    },
+    {
+      "address": "0QB3-oSE65XA86pdra7hmWIFMEkv10kPTaGsqWdJjy5xewdx",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-062"
+    },
+    {
+      "address": "0QDR7c_FxrYuCJ9YTcoqYh0LscGckPhyejTub0CyzvKxDrlw",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-063"
+    },
+    {
+      "address": "0QAxlKScme35ebRDEnLyE3jB_Dru-XKOafvgqlJdJ3gfC5mB",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-064"
+    },
+    {
+      "address": "0QBpJ__U8C5CEnKtwcT3cOsPX70LXOR0wDFokcM9NiRaMTuO",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-065"
+    },
+    {
+      "address": "0QBCpCYYlVjXoo-uTva4RuUJr1jImS-Il-vVEWO462Q34Gur",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-066"
+    },
+    {
+      "address": "0QCEkh3tO6VdxJyzhT7SOzOOzzebinIl45ByJXlfEKKoysHW",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-067"
+    },
+    {
+      "address": "0QD_is0DhBLG7tpygtag-spCb7QBJwOnBUg0n4BLrgQ49Qim",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-068"
+    },
+    {
+      "address": "0QBhjz2QingRrMU-7doc_UmtvNCPnJFlZfmM4nvU-FvOvqKU",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-069"
+    },
+    {
+      "address": "0QBdjQgXt0J-Ehjyus6CuwKUwrEMS7pzkMYEO81OeKgJZtn7",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-070"
+    },
+    {
+      "address": "0QDjGhXVIPz6xDrhv6f0B-5-hWV1trRe04kLt1f9vnKI9Wlu",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-071"
+    },
+    {
+      "address": "0QDLe99fJ41fUrLEhdxjkktlB5b0PAUspSdlM53OREmb2ao-",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-072"
+    },
+    {
+      "address": "0QARrt_291PSgQZ_xAFKD7i22n7zFtcJB5STBo9ljWPJvS_M",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-073"
+    },
+    {
+      "address": "0QCW0tN1KP-tRHcIM-LKNYw99cUy50_C8oN-8mxQm8PP7STq",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-074"
+    },
+    {
+      "address": "0QBc-9fRI_oifzztHI9ZQ2G241FN3cYOTpb2o-YCQrhauH8k",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-075"
+    },
+    {
+      "address": "0QBHqS0aZE72LXeMw6W13uh3zvJCOyx_jJ6GhAS0SI5xQr3-",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-076"
+    },
+    {
+      "address": "0QBCU7Ywi-rsIZd7CIjHCvA3n0h6aY7mEyo4VueyRcxEq1hb",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-077"
+    },
+    {
+      "address": "0QBoy5IIS1rf7EHVN1r9DZUBbC1mxA92fI1AzhdZmmDNWg5L",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-078"
+    },
+    {
+      "address": "0QAJtt8FSvrodODHE_Hdjif9IiA3KsSNJkjWF7QTn4ak0-6N",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-079"
+    },
+    {
+      "address": "0QBhuk2WrDSXpwAuOWEr_QiG2J2PES7qeju-yHGLI4o7bE_I",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-080"
+    },
+    {
+      "address": "0QBkUjHJeDf7D4nJ6XZcw6YkipdW6sgjBJ_gNHY2YdcwpGim",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-081"
+    },
+    {
+      "address": "0QBsZPJSRMzl_TA-nEoK6aaPhpPNMKLclUOYZfk34PBLXfP5",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-082"
+    },
+    {
+      "address": "0QAhvhhOLoj0vg_i7y27t-WR1CjEUP7QgcRRTIEQJbiv4kCR",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-083"
+    },
+    {
+      "address": "0QCNM2oEczCR8v6TANq63h4IDdwEG5Gc72vqBXB8qzDh65ZI",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-084"
+    },
+    {
+      "address": "0QBJs9WI92vlSAfzQ5L_Z6tH04IC8jEkXCcgncjU35jyxw_d",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-085"
+    },
+    {
+      "address": "0QA_McX8NtToLSRkKotSwXKMjoPv-AhSdGczr1Z8_7na1hHz",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-086"
+    },
+    {
+      "address": "0QAQSdcwuWSXhFOEe3Sp02B2kJezpHPLqzKzxAuC8-V-b09d",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-087"
+    },
+    {
+      "address": "0QDNJZRXZkr0rhBwTA8jcfZjJjwMIpgyS3pAFZONw1UohCeo",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-088"
+    },
+    {
+      "address": "0QCv49u-qeVGwJp0w8Kx31siRYFh7pIHEIJsotrvRl_6kEX5",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-089"
+    },
+    {
+      "address": "0QASr0zcY0Z14XvvNI-_DmnLi2bdF6WbTzBq751_-d9esFK8",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-090"
+    },
+    {
+      "address": "0QByuwoiAcpWG3BeE4Mgw9aEzRhp2uweM0aTHK-PHmrN45zT",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-091"
+    },
+    {
+      "address": "0QDEWhKlwdtl_F1KP5IyRA6U26kh1BOaRjoC1964aj4nH_Qo",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-092"
+    },
+    {
+      "address": "0QBEq6n23thuzoIsPgrSrtmZDjrv8dhGUWUH7yfk6_-IsilK",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-093"
+    },
+    {
+      "address": "0QBnaMf1EBSbJ39gLoAYyYh0g-YDUMPp8JHosg4g7JcMoI7l",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-094"
+    },
+    {
+      "address": "0QD8Rq2uFna9z4-pQFDUjcMJxjRRbwuTEm29jb4glKmEsrIW",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-095"
+    },
+    {
+      "address": "0QBEiRNNj51dFhiY4S-GI-8pB7KtLqQthxeco0WLUtIy9N68",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-096"
+    },
+    {
+      "address": "0QC1c-8wKgwlpar5XF8l4qAJI1HDEosK8EJluQfFYz0qT2hs",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-097"
+    },
+    {
+      "address": "0QAN6yX4PzKi53Kopa716rbesMrjOSx5VfhdyWAt0FLW4y_5",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-098"
+    },
+    {
+      "address": "0QCgWpF3BK5gwBvmlFXinBvQ_gyDpG5eekYSuHgIwwTg2tuK",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-099"
+    },
+    {
+      "address": "0QDfD0ZdjongUBYUBJj5MGpTbFHZhwnnGYsbXuiPFwyjAKR4",
+      "amount": "1000000000",
+      "tag": "stress100",
+      "memo": "stress-recipient-100"
+    }
+  ]
+}

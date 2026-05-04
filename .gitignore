@@ -27,6 +27,7 @@ legacy/run_state*.json
 # ─── Reports / audit output ───────────────────────────────────────────────────
 reports/
 *.csv
+!test-fixtures/stage-b1/audit.csv
 
 # ─── Generated targets ────────────────────────────────────────────────────────
 data/targets.generated.json

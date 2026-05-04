@@ -4,10 +4,10 @@ set -euo pipefail
 OUT="/tmp/stage-b1-regression-baseline.json"
 
 CAMPAIGN_ID="${WATCH_CAMPAIGN_ID:-stress_stage_a_100_01}"
-TARGETS_PATH="${WATCH_TARGETS_PATH:-./data/targets.100.01.json}"
-STATE_PATH="${WATCH_STATE_PATH:-./stress_stage_a_100_01.state.json}"
+TARGETS_PATH="${WATCH_TARGETS_PATH:-./test-fixtures/stage-b1/targets.json}"
+STATE_PATH="${WATCH_STATE_PATH:-./test-fixtures/stage-b1/state.json}"
 REPORT_DIR="${WATCH_REPORT_DIR:-./reports}"
-REPORT_PATH="${WATCH_REPORT_PATH:-./reports/mint_report_stress_stage_a_100_01_2026-05-02T18-11-44-006Z.csv}"
+REPORT_PATH="${WATCH_REPORT_PATH:-./test-fixtures/stage-b1/audit.csv}"
 OPERATORS_PATH="${WATCH_OPERATORS_PATH:-./data/operators.json}"
 BATCH_SIZE="${WATCH_BATCH_SIZE:-10}"
 NOW_ISO="${WATCH_NOW_ISO:-2026-05-02T22:00:00.000Z}"
