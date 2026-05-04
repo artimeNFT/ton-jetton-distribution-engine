@@ -6,7 +6,7 @@ Stage B-0 watcher is practically complete for Stage A artifact validation.
 
 Current repository checkpoint:
 
-- HEAD: 2821d2a Document Stage B regression script
+- HEAD: 6bc6de8 Use dummy operator mnemonics in gate smoke
 - Git status: clean
 - Execution mode: read-only
 - Blockchain execution: disabled
@@ -50,6 +50,13 @@ Current repository checkpoint:
 - Audit CSV duplicate recipient rows.
 - Audit CSV amount consistency.
 - Audit CSV status consistency.
+- Audit CSV campaignId consistency.
+- Audit CSV batchId consistency.
+- Audit CSV attempts consistency.
+- Audit CSV walletLabel/operatorId consistency.
+- Audit CSV txHash consistency.
+- Stage B full-check CI coverage.
+- Stage B regression fixtures for fresh-clone execution.
 
 ## Detector map
 
@@ -72,6 +79,11 @@ Current repository checkpoint:
 - W020: audit amount mismatch.
 - W021: duplicate operator IDs.
 - W022: audit status mismatch.
+- W023: audit campaignId mismatch.
+- W024: audit batchId mismatch.
+- W025: audit attempts mismatch.
+- W026: audit walletLabel/operatorId mismatch.
+- W027: audit txHash mismatch.
 
 ## Recommended validation command
 
@@ -87,19 +99,33 @@ Expected result:
 - W017 PASS
 - W020 PASS
 - W022 PASS
+- W023 PASS
+- W024 PASS
+- W025 PASS
+- W026 PASS
+- W027 PASS
 - git status remains clean after the run
 
 ## Remaining hardening items
 
-The watcher is sufficient as a Stage A artifact gate, but the following items remain before mainnet readiness:
+The watcher is sufficient as a Stage A artifact gate.
+
+Completed since the original completion note:
 
 - Audit txHash consistency.
 - Audit campaignId consistency.
 - Audit batchId consistency.
 - Audit attempts consistency.
 - Audit operator or walletLabel consistency.
+- Structured Stage B-1 regression coverage.
+- GitHub Actions CI for stage-b-full-check.
+
+Still open before testnet or mainnet readiness:
+
 - Report auto-discovery from WATCH_REPORT_DIR.
-- More structured tests or CI integration.
+- Commander control-plane review.
+- Watcher architecture lock.
+- Testnet canary plan.
 - Mainnet execution gates and kill-switch procedures.
 
 ## Architectural conclusion

@@ -51,7 +51,7 @@ Stage B-0 does not:
 - read live-chain state
 - change Tact contracts
 
-Any mutation-capable behavior belongs to a later Stage B-1 design.
+Stage B-1 in the current repository means regression automation only. Mutation-capable behavior is not part of Stage B-1 and requires a separate future design review.
 
 ## Core Rule
 
@@ -506,11 +506,13 @@ Expected result:
 - known partial or running fault states produce expected findings
 - no files are modified
 
-## Future Stage B-1
+## Future Mutation-Capable Stage
 
-Stage B-1 may introduce controlled recommendations or recovery actions.
+The current Stage B-1 is regression automation for the read-only watcher.
 
-Stage B-1 requires a separate design review before implementation.
+Controlled recommendations, recovery actions, or mutation-capable behavior are not approved in Stage B-1.
+
+Any future mutation-capable mode requires a separate design document and review before implementation.
 
 Any mutation-capable mode requires:
 
@@ -520,8 +522,10 @@ Any mutation-capable mode requires:
 - audit record
 - rollback plan
 - dedicated tests
+- CI coverage
+- operator-visible safety checklist
 
-Stage B-1 must not be implemented by silently extending Stage B-0.
+Mutation-capable behavior must not be implemented by silently extending Stage B-0 or Stage B-1.
 
 ## Freeze Compatibility
 

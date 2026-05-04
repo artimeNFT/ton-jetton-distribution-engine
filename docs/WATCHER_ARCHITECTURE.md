@@ -1,6 +1,8 @@
 Watcher Architecture Specification
 TON Jetton Distribution Engine — Stage B Design (Pre-Implementation)
 Status: Design only. No code. No Dispatcher modifications. No contract changes.
+Scope note: This document describes a future network-ingestion Watcher for Stage B2+.
+It does not describe the current Stage B-0 offline artifact validator implemented in scripts/watchStageB0.ts.
 Frozen baseline: Stage A (DRY_RUN, launchStageA.ts, Hook & Lock, entry-centric RunState)
 Revision: Final correction pass — provider-independent candidateId, builder address serialization policy, trace_invalidated consistency, profileStatus scope, buffer overflow safety.
 
