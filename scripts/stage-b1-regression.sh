@@ -45,6 +45,11 @@ assert audit["expectedRowCount"] == 100
 assert audit["duplicateRecipientRows"] == 0
 assert audit["amountMismatchRows"] == 0
 assert audit["statusMismatchRows"] == 0
+assert audit["campaignIdMismatchRows"] == 0
+assert audit["batchIdMismatchRows"] == 0
+assert audit["attemptsMismatchRows"] == 0
+assert audit["walletLabelMismatchRows"] == 0
+assert audit["txHashMismatchRows"] == 0
 
 state = report["state"]
 assert state["entryCount"] == 100
