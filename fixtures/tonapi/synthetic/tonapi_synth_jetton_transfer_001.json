@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "fixtureId": "tonapi_synth_jetton_transfer_001",
+    "provider": "tonapi",
+    "fixtureClass": "synthetic_provider_sample",
+    "captureSource": "hand_crafted",
+    "captureDate": "synthetic",
+    "realOrSynthetic": "synthetic",
+    "redactionStatus": "none",
+    "redactionNotes": null,
+    "chain": "ton_mainnet",
+    "network": "mainnet",
+    "tonapiSourceKind": "websocket_events",
+    "tonapiEndpointOrStreamName": "tonapi_websocket_events",
+    "jettonMaster": "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv",
+    "expectedOutcome": "normalize_pass",
+    "reviewStatus": "approved_for_fixture_commit",
+    "submitterNotes": "Synthetic fixture hand-crafted to represent a well-formed TonAPI WebSocket Jetton transfer action payload. All addresses, hashes, and amounts are placeholder values. No secrets, no real operator data.",
+    "reviewerNotes": "Synthetic content verified. No sensitive data present. Metadata complete. Payload shape sufficient for future extractor design. Profiling and noise suppression metadata advisory only. Approved for fixture commit."
+  },
+  "tonapiPayload": {
+    "event_id": "synth-event-00000000000000000001",
+    "timestamp": 1700000000,
+    "actions": [
+      {
+        "type": "JettonTransfer",
+        "status": "ok",
+        "JettonTransfer": {
+          "sender": null,
+          "recipient": {
+            "address": "0QC73QalKxi5vYfRjcVY2Ycn_W5XHr2eyMPVeQ1NnuB7YMFl"
+          },
+          "jetton": {
+            "address": "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv"
+          },
+          "amount": "1000000",
+          "comment": null
+        },
+        "base_transactions": [
+          {
+            "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "lt": "47000000000001",
+            "utime": 1700000000
+          }
+        ],
+        "trace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "action_index": 0,
+        "message_hash": null
+      }
+    ]
+  },
+  "profilingMetadata": {
+    "accountStatus": "active",
+    "contractCodeHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "walletTypeHint": "v4",
+    "walletVersionHint": "v4r2",
+    "interfacesDetected": [
+      "wallet"
+    ],
+    "knownContractFamily": "wallet_v4",
+    "entityLabel": null,
+    "classificationConfidence": "high",
+    "classificationSource": "local_registry",
+    "classificationMethod": "code_hash_lookup",
+    "profileObservedAt": "2023-11-14T22:13:20.000Z",
+    "profileSourcePayloadRef": "tonapi_synth_jetton_transfer_001"
+  },
+  "noiseSuppressionMetadata": {
+    "dustThreshold": "10000",
+    "minimumEventAmount": "10000",
+    "lowSignalRejectionExpectation": false,
+    "noiseSuppressionRationale": "Amount 1000000 is well above dust threshold. Fixture represents a normal-signal transfer event.",
+    "spamPatternHint": null,
+    "fixtureRelevanceNote": "Represents a standard passing Jetton transfer event for normalize_pass pipeline validation."
+  }
+}
