@@ -8,6 +8,8 @@ import {
   buildCandidateKeyString,
   hashCandidateKey,
 } from "../lib/watcher/candidateId";
+import { extractTonapiRawProviderEvents } from "../lib/watcher/tonapiExtractor";
+import type { RawProviderEvent } from "../lib/watcher/ingestionTypes";
 
 const LABEL = "[stage-b2-tonapi-fixture-smoke]";
 
@@ -28,6 +30,9 @@ const MISSING_TXHASH_EXPECTED_PATH = path.resolve(
   process.cwd(),
   "fixtures/tonapi/expected/tonapi_synth_missing_txhash_001.rejection.json",
 );
+
+const RECEIVED_AT = "2023-11-14T22:13:20.000Z";
+const FINALITY = "confirmed" as const;
 
 const SAFETY_BANNED_PATTERNS: string[] = [
   "wss://",
@@ -80,6 +85,37 @@ function checkSafety(raw: string): void {
       throw new Error(`Safety violation: banned pattern found: "${pattern}"`);
     }
   }
+}
+
+function getCanonicalMasterKey(jettonMaster: string): string {
+  const canonicalResult = deriveCanonicalKey(jettonMaster);
+  if (!canonicalResult.ok) {
+    throw new Error(canonicalResult.detail);
+  }
+
+  return canonicalResult.key;
+}
+
+function assertRawProviderEventsEqual(
+  actual: RawProviderEvent,
+  expected: RawProviderEvent,
+  label: string,
+): void {
+  assertEq(actual.provider, expected.provider, `${label}.provider`);
+  assertEq(actual.receivedAt, expected.receivedAt, `${label}.receivedAt`);
+
+  assertEq(actual.payload.eventType, expected.payload.eventType, `${label}.payload.eventType`);
+  assertEq(actual.payload.sourceAddress, expected.payload.sourceAddress, `${label}.payload.sourceAddress`);
+  assertEq(actual.payload.destinationAddress, expected.payload.destinationAddress, `${label}.payload.destinationAddress`);
+  assertEq(actual.payload.jettonMaster, expected.payload.jettonMaster, `${label}.payload.jettonMaster`);
+  assertEq(actual.payload.amount, expected.payload.amount, `${label}.payload.amount`);
+  assertEq(actual.payload.txHash, expected.payload.txHash, `${label}.payload.txHash`);
+  assertEq(actual.payload.traceId, expected.payload.traceId, `${label}.payload.traceId`);
+  assertEq(actual.payload.actionIndex, expected.payload.actionIndex, `${label}.payload.actionIndex`);
+  assertEq(actual.payload.messageHash, expected.payload.messageHash, `${label}.payload.messageHash`);
+  assertEq(actual.payload.lt, expected.payload.lt, `${label}.payload.lt`);
+  assertEq(actual.payload.eventTimestamp, expected.payload.eventTimestamp, `${label}.payload.eventTimestamp`);
+  assertEq(actual.payload.finality, expected.payload.finality, `${label}.payload.finality`);
 }
 
 function validatePassingFixture(): void {
@@ -174,7 +210,7 @@ function validatePassingFixture(): void {
   assertNull(expectedPayload["messageHash"] as null, "expected.payload.messageHash");
 
   assertEq(expected["provider"], "tonapi", "expected.provider");
-  assertEq(expected["receivedAt"], "2023-11-14T22:13:20.000Z", "expected.receivedAt");
+  assertEq(expected["receivedAt"], RECEIVED_AT, "expected.receivedAt");
   assertEq(expectedPayload["eventType"], "jetton_transfer", "expected.payload.eventType");
   assertNull(expectedPayload["sourceAddress"] as null, "expected.payload.sourceAddress");
   assertEq(
@@ -201,30 +237,31 @@ function validatePassingFixture(): void {
   assertEq(expectedPayload["actionIndex"], 0, "expected.payload.actionIndex");
   assertNull(expectedPayload["messageHash"] as null, "expected.payload.messageHash");
   assertEq(expectedPayload["lt"], "47000000000001", "expected.payload.lt");
-  assertEq(
-    expectedPayload["eventTimestamp"],
-    "2023-11-14T22:13:20.000Z",
-    "expected.payload.eventTimestamp",
-  );
-  assertEq(expectedPayload["finality"], "confirmed", "expected.payload.finality");
+  assertEq(expectedPayload["eventTimestamp"], RECEIVED_AT, "expected.payload.eventTimestamp");
+  assertEq(expectedPayload["finality"], FINALITY, "expected.payload.finality");
 
-  const canonicalResult = deriveCanonicalKey(
-    expectedPayload["jettonMaster"] as string,
-  );
-  if (!canonicalResult.ok) {
-    throw new Error(canonicalResult.detail);
+  const manualRaw = expected as unknown as RawProviderEvent;
+  const extractedEvents = extractTonapiRawProviderEvents(tonapiPayload, {
+    receivedAt: RECEIVED_AT,
+    finality: FINALITY,
+  });
+
+  assertEq(extractedEvents.length, 1, "happy extractor event count");
+  assertRawProviderEventsEqual(extractedEvents[0], manualRaw, "happy extractor output");
+
+  const canonicalMasterKey = getCanonicalMasterKey(manualRaw.payload.jettonMaster);
+
+  const manualResult = filterAndNormalize(manualRaw, canonicalMasterKey);
+  if (!manualResult.pass) {
+    throw new Error(`manual happy normalize failed: ${manualResult.reason} ${manualResult.detail}`);
   }
 
-  const result = filterAndNormalize(
-    expected as unknown as Parameters<typeof filterAndNormalize>[0],
-    canonicalResult.key,
-  );
-
-  if (!result.pass) {
-    throw new Error(`filterAndNormalize failed: ${result.reason} ${result.detail}`);
+  const extractedResult = filterAndNormalize(extractedEvents[0], canonicalMasterKey);
+  if (!extractedResult.pass) {
+    throw new Error(`extracted happy normalize failed: ${extractedResult.reason} ${extractedResult.detail}`);
   }
 
-  const norm = result.event;
+  const norm = extractedResult.event;
 
   assertEq(norm.provider, "tonapi", "norm.provider");
   assertEq(norm.amountDecimal, "1000000", "norm.amountDecimal");
@@ -328,52 +365,52 @@ function validateMissingTxHashFixture(): void {
     "missing.expectedResult.codeLevelReason",
   );
 
-  const rawProviderEvent = expected["rawProviderEvent"] as Record<string, unknown>;
-  const rawPayload = rawProviderEvent["payload"] as Record<string, unknown>;
+  const rawProviderEvent = (expected["rawProviderEvent"] as unknown) as RawProviderEvent;
+  const rawPayload = rawProviderEvent.payload;
 
-  assertEq(rawProviderEvent["provider"], "tonapi", "missing.rawProviderEvent.provider");
+  assertEq(rawProviderEvent.provider, "tonapi", "missing.rawProviderEvent.provider");
+  assertEq(rawProviderEvent.receivedAt, RECEIVED_AT, "missing.rawProviderEvent.receivedAt");
+  assertEq(rawPayload.eventType, "jetton_transfer", "missing.payload.eventType");
+  assertNull(rawPayload.sourceAddress as null, "missing.payload.sourceAddress");
   assertEq(
-    rawProviderEvent["receivedAt"],
-    "2023-11-14T22:13:20.000Z",
-    "missing.rawProviderEvent.receivedAt",
-  );
-  assertEq(rawPayload["eventType"], "jetton_transfer", "missing.payload.eventType");
-  assertNull(rawPayload["sourceAddress"] as null, "missing.payload.sourceAddress");
-  assertEq(
-    rawPayload["destinationAddress"],
+    rawPayload.destinationAddress,
     (jettonTransfer["recipient"] as Record<string, unknown>)["address"],
     "missing.destination mapping",
   );
   assertEq(
-    rawPayload["jettonMaster"],
+    rawPayload.jettonMaster,
     (jettonTransfer["jetton"] as Record<string, unknown>)["address"],
     "missing.jettonMaster mapping",
   );
-  assertEq(rawPayload["amount"], jettonTransfer["amount"], "missing.amount mapping");
-  assertEq(rawPayload["txHash"], "", "missing.payload.txHash");
-  assertEq(rawPayload["lt"], baseTransactions[0]["lt"], "missing.lt mapping");
-  assertEq(rawPayload["traceId"], action["trace_id"], "missing.traceId mapping");
-  assertEq(rawPayload["actionIndex"], action["action_index"], "missing.actionIndex mapping");
-  assertNull(rawPayload["messageHash"] as null, "missing.payload.messageHash");
-  assertEq(rawPayload["finality"], "confirmed", "missing.payload.finality");
+  assertEq(rawPayload.amount, jettonTransfer["amount"], "missing.amount mapping");
+  assertEq(rawPayload.txHash, "", "missing.payload.txHash");
+  assertEq(rawPayload.lt, baseTransactions[0]["lt"], "missing.lt mapping");
+  assertEq(rawPayload.traceId, action["trace_id"], "missing.traceId mapping");
+  assertEq(rawPayload.actionIndex, action["action_index"], "missing.actionIndex mapping");
+  assertNull(rawPayload.messageHash as null, "missing.payload.messageHash");
+  assertEq(rawPayload.finality, FINALITY, "missing.payload.finality");
 
-  const canonicalResult = deriveCanonicalKey(
-    rawPayload["jettonMaster"] as string,
-  );
-  if (!canonicalResult.ok) {
-    throw new Error(canonicalResult.detail);
+  const extractedEvents = extractTonapiRawProviderEvents(tonapiPayload, {
+    receivedAt: RECEIVED_AT,
+    finality: FINALITY,
+  });
+
+  assertEq(extractedEvents.length, 1, "missing extractor event count");
+  assertRawProviderEventsEqual(extractedEvents[0], rawProviderEvent, "missing extractor output");
+
+  const canonicalMasterKey = getCanonicalMasterKey(rawPayload.jettonMaster);
+
+  const manualResult = filterAndNormalize(rawProviderEvent, canonicalMasterKey);
+  if (manualResult.pass) {
+    throw new Error("manual missing txHash unexpectedly passed normalization");
   }
+  assertEq(manualResult.reason, "MISSING_TX_HASH", "manual missing filterAndNormalize reason");
 
-  const result = filterAndNormalize(
-    rawProviderEvent as unknown as Parameters<typeof filterAndNormalize>[0],
-    canonicalResult.key,
-  );
-
-  if (result.pass) {
-    throw new Error("missing txHash fixture unexpectedly passed normalization");
+  const extractedResult = filterAndNormalize(extractedEvents[0], canonicalMasterKey);
+  if (extractedResult.pass) {
+    throw new Error("extracted missing txHash unexpectedly passed normalization");
   }
-
-  assertEq(result.reason, "MISSING_TX_HASH", "missing filterAndNormalize reason");
+  assertEq(extractedResult.reason, "MISSING_TX_HASH", "extracted missing filterAndNormalize reason");
 }
 
 async function main(): Promise<void> {
