@@ -1,0 +1,62 @@
+{
+  "metadata": {
+    "fixtureId": "tonapi_synth_missing_txhash_001",
+    "provider": "tonapi",
+    "fixtureClass": "synthetic_provider_sample",
+    "captureSource": "hand_crafted",
+    "captureDate": "synthetic",
+    "realOrSynthetic": "synthetic",
+    "redactionStatus": "none",
+    "redactionNotes": null,
+    "chain": "ton_mainnet",
+    "network": "mainnet",
+    "tonapiSourceKind": "websocket_events",
+    "tonapiEndpointOrStreamName": "tonapi_websocket_events",
+    "jettonMaster": "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv",
+    "expectedOutcome": "reject_missing_tx_hash",
+    "codeLevelReason": "MISSING_TX_HASH",
+    "reviewStatus": "approved_for_fixture_commit",
+    "submitterNotes": "Synthetic fixture hand-crafted to represent a TonAPI WebSocket Jetton transfer payload with a missing txHash. All addresses, hashes, and amounts are placeholder values. No secrets, no real operator data.",
+    "reviewerNotes": "Synthetic content verified. No sensitive data present. Metadata complete. Rejection condition is empty base_transactions[0].hash. Approved for fixture commit only. No extractor implementation approved."
+  },
+  "tonapiPayload": {
+    "event_id": "synth-event-00000000000000000002",
+    "timestamp": 1700000000,
+    "actions": [
+      {
+        "type": "JettonTransfer",
+        "status": "ok",
+        "JettonTransfer": {
+          "sender": null,
+          "recipient": {
+            "address": "0QC73QalKxi5vYfRjcVY2Ycn_W5XHr2eyMPVeQ1NnuB7YMFl"
+          },
+          "jetton": {
+            "address": "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv"
+          },
+          "amount": "1000000",
+          "comment": null
+        },
+        "base_transactions": [
+          {
+            "hash": "",
+            "lt": "47000000000001",
+            "utime": 1700000000
+          }
+        ],
+        "trace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "action_index": 0,
+        "message_hash": null
+      }
+    ]
+  },
+  "profilingMetadata": null,
+  "noiseSuppressionMetadata": {
+    "dustThreshold": "10000",
+    "minimumEventAmount": "10000",
+    "lowSignalRejectionExpectation": false,
+    "noiseSuppressionRationale": "Rejection is caused by missing txHash, not amount or dust logic.",
+    "spamPatternHint": null,
+    "fixtureRelevanceNote": "Validates deterministic missing txHash rejection path."
+  }
+}

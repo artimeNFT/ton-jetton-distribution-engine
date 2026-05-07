@@ -1,0 +1,28 @@
+{
+  "fixtureId": "tonapi_synth_missing_txhash_001",
+  "expectedOutcome": "reject_missing_tx_hash",
+  "provider": "tonapi",
+  "receivedAt": "2023-11-14T22:13:20.000Z",
+  "rawProviderEvent": {
+    "provider": "tonapi",
+    "receivedAt": "2023-11-14T22:13:20.000Z",
+    "payload": {
+      "eventType": "jetton_transfer",
+      "sourceAddress": null,
+      "destinationAddress": "0QC73QalKxi5vYfRjcVY2Ycn_W5XHr2eyMPVeQ1NnuB7YMFl",
+      "jettonMaster": "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv",
+      "amount": "1000000",
+      "txHash": "",
+      "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "actionIndex": 0,
+      "messageHash": null,
+      "lt": "47000000000001",
+      "eventTimestamp": "2023-11-14T22:13:20.000Z",
+      "finality": "confirmed"
+    }
+  },
+  "expectedResult": {
+    "pass": false,
+    "codeLevelReason": "MISSING_TX_HASH"
+  }
+}
