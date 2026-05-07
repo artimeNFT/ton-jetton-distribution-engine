@@ -44,10 +44,29 @@ export type RejectionReasonCode =
 
 export type ProviderName = "fixture" | "tonapi";
 
+// ─── Advisory Profile ─────────────────────────────────────────────────────────
+//
+// Advisory profile metadata is pass-through only.
+// It must not affect filtering, candidate identity, Dispatcher behavior,
+// targets, signing, sending, broadcasting, or execution.
+
+export interface AdvisoryAddressProfile {
+  readonly walletTypeHint: string | null;
+  readonly codeHash: string | null;
+  readonly accountStatus: string | null;
+  readonly entityLabel: string | null;
+}
+
+export interface AdvisoryProfile {
+  readonly source: AdvisoryAddressProfile | null;
+  readonly destination: AdvisoryAddressProfile | null;
+}
+
 export interface RawProviderEvent {
   readonly provider: ProviderName;
   readonly receivedAt: string;            // ISO 8601 wall clock
   readonly payload: NeutralEventPayload;
+  readonly advisoryProfile?: AdvisoryProfile | null;
 }
 
 // Neutral event payload: the fixture contract for B2 first pass.
@@ -94,6 +113,7 @@ export interface NormalizedEvent {
   readonly detectedAt: string;                 // ISO 8601 wall clock (set by filter)
   readonly eventTimestamp: string | null;      // ISO 8601 from block, or null
   readonly finality: "confirmed" | "finalized";
+  readonly advisoryProfile?: AdvisoryProfile | null;
 }
 
 // ─── Filter Result ────────────────────────────────────────────────────────────
