@@ -20,6 +20,15 @@ const EXPECTED_PATH = path.resolve(
   "fixtures/tonapi/expected/tonapi_synth_jetton_transfer_001.raw-provider-event.json",
 );
 
+const MISSING_TXHASH_FIXTURE_PATH = path.resolve(
+  process.cwd(),
+  "fixtures/tonapi/synthetic/tonapi_synth_missing_txhash_001.json",
+);
+const MISSING_TXHASH_EXPECTED_PATH = path.resolve(
+  process.cwd(),
+  "fixtures/tonapi/expected/tonapi_synth_missing_txhash_001.rejection.json",
+);
+
 const SAFETY_BANNED_PATTERNS: string[] = [
   "wss://",
   "http://",
@@ -43,7 +52,7 @@ function assert(condition: boolean, message: string): void {
 function assertEq<T>(actual: T, expected: T, label: string): void {
   if (actual !== expected) {
     throw new Error(
-      `Assertion failed [${label}]: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+      `Assertion failed [${label}]: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
     );
   }
 }
@@ -51,9 +60,17 @@ function assertEq<T>(actual: T, expected: T, label: string): void {
 function assertNull(actual: unknown, label: string): void {
   if (actual !== null) {
     throw new Error(
-      `Assertion failed [${label}]: expected null, got ${JSON.stringify(actual)}`
+      `Assertion failed [${label}]: expected null, got ${JSON.stringify(actual)}`,
     );
   }
+}
+
+function readJsonFile(filePath: string): { raw: string; parsed: Record<string, unknown> } {
+  const raw = fs.readFileSync(filePath, "utf-8");
+  return {
+    raw,
+    parsed: JSON.parse(raw) as Record<string, unknown>,
+  };
 }
 
 function checkSafety(raw: string): void {
@@ -65,16 +82,10 @@ function checkSafety(raw: string): void {
   }
 }
 
-async function main(): Promise<void> {
-  // 1. Read both JSON files from disk
-  const fixtureRaw = fs.readFileSync(FIXTURE_PATH, "utf-8");
-  const expectedRaw = fs.readFileSync(EXPECTED_PATH, "utf-8");
+function validatePassingFixture(): void {
+  const { raw: fixtureRaw, parsed: fixture } = readJsonFile(FIXTURE_PATH);
+  const { raw: expectedRaw, parsed: expected } = readJsonFile(EXPECTED_PATH);
 
-  // 2. Parse both files as JSON
-  const fixture = JSON.parse(fixtureRaw) as Record<string, unknown>;
-  const expected = JSON.parse(expectedRaw) as Record<string, unknown>;
-
-  // 3. Validate fixture top-level keys
   for (const key of [
     "metadata",
     "tonapiPayload",
@@ -84,12 +95,10 @@ async function main(): Promise<void> {
     assert(key in fixture, `fixture missing top-level key: ${key}`);
   }
 
-  // 4. Validate expected RawProviderEvent shape
   for (const key of ["provider", "receivedAt", "payload"]) {
     assert(key in expected, `expected RawProviderEvent missing key: ${key}`);
   }
 
-  // 5. Validate metadata exactly
   const metadata = fixture["metadata"] as Record<string, unknown>;
   assertEq(metadata["fixtureId"], "tonapi_synth_jetton_transfer_001", "metadata.fixtureId");
   assertEq(metadata["provider"], "tonapi", "metadata.provider");
@@ -106,16 +115,14 @@ async function main(): Promise<void> {
   assertEq(
     metadata["jettonMaster"],
     "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv",
-    "metadata.jettonMaster"
+    "metadata.jettonMaster",
   );
   assertEq(metadata["expectedOutcome"], "normalize_pass", "metadata.expectedOutcome");
   assertEq(metadata["reviewStatus"], "approved_for_fixture_commit", "metadata.reviewStatus");
 
-  // 6. Validate safety — scan both raw file strings
   checkSafety(fixtureRaw);
   checkSafety(expectedRaw);
 
-  // 7. Validate TonAPI synthetic payload mapping
   const tonapiPayload = fixture["tonapiPayload"] as Record<string, unknown>;
   const actions = tonapiPayload["actions"] as Array<Record<string, unknown>>;
   assert(Array.isArray(actions) && actions.length > 0, "tonapiPayload.actions must be non-empty array");
@@ -131,42 +138,41 @@ async function main(): Promise<void> {
   assertEq(
     (jettonTransfer["recipient"] as Record<string, unknown>)["address"],
     expectedPayload["destinationAddress"],
-    "recipient.address vs expected.payload.destinationAddress"
+    "recipient.address vs expected.payload.destinationAddress",
   );
   assertEq(
     (jettonTransfer["jetton"] as Record<string, unknown>)["address"],
     expectedPayload["jettonMaster"],
-    "jetton.address vs expected.payload.jettonMaster"
+    "jetton.address vs expected.payload.jettonMaster",
   );
   assertEq(jettonTransfer["amount"], expectedPayload["amount"], "JettonTransfer.amount vs expected.payload.amount");
   assert(
     Array.isArray(baseTransactions) && baseTransactions.length > 0,
-    "base_transactions must be non-empty array"
+    "base_transactions must be non-empty array",
   );
   assertEq(
     baseTransactions[0]["hash"],
     expectedPayload["txHash"],
-    "base_transactions[0].hash vs expected.payload.txHash"
+    "base_transactions[0].hash vs expected.payload.txHash",
   );
   assertEq(
     baseTransactions[0]["lt"],
     expectedPayload["lt"],
-    "base_transactions[0].lt vs expected.payload.lt"
+    "base_transactions[0].lt vs expected.payload.lt",
   );
   assertEq(
     action["trace_id"],
     expectedPayload["traceId"],
-    "action.trace_id vs expected.payload.traceId"
+    "action.trace_id vs expected.payload.traceId",
   );
   assertEq(
     action["action_index"],
     expectedPayload["actionIndex"],
-    "action.action_index vs expected.payload.actionIndex"
+    "action.action_index vs expected.payload.actionIndex",
   );
   assertNull(action["message_hash"] as null, "action.message_hash");
   assertNull(expectedPayload["messageHash"] as null, "expected.payload.messageHash");
 
-  // 8. Validate expected RawProviderEvent fields
   assertEq(expected["provider"], "tonapi", "expected.provider");
   assertEq(expected["receivedAt"], "2023-11-14T22:13:20.000Z", "expected.receivedAt");
   assertEq(expectedPayload["eventType"], "jetton_transfer", "expected.payload.eventType");
@@ -174,23 +180,23 @@ async function main(): Promise<void> {
   assertEq(
     expectedPayload["destinationAddress"],
     "0QC73QalKxi5vYfRjcVY2Ycn_W5XHr2eyMPVeQ1NnuB7YMFl",
-    "expected.payload.destinationAddress"
+    "expected.payload.destinationAddress",
   );
   assertEq(
     expectedPayload["jettonMaster"],
     "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv",
-    "expected.payload.jettonMaster"
+    "expected.payload.jettonMaster",
   );
   assertEq(expectedPayload["amount"], "1000000", "expected.payload.amount");
   assertEq(
     expectedPayload["txHash"],
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "expected.payload.txHash"
+    "expected.payload.txHash",
   );
   assertEq(
     expectedPayload["traceId"],
     "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "expected.payload.traceId"
+    "expected.payload.traceId",
   );
   assertEq(expectedPayload["actionIndex"], 0, "expected.payload.actionIndex");
   assertNull(expectedPayload["messageHash"] as null, "expected.payload.messageHash");
@@ -198,33 +204,28 @@ async function main(): Promise<void> {
   assertEq(
     expectedPayload["eventTimestamp"],
     "2023-11-14T22:13:20.000Z",
-    "expected.payload.eventTimestamp"
+    "expected.payload.eventTimestamp",
   );
   assertEq(expectedPayload["finality"], "confirmed", "expected.payload.finality");
 
-  // 9–10. Derive canonical key from expected.payload.jettonMaster
   const canonicalResult = deriveCanonicalKey(
-    expectedPayload["jettonMaster"] as string
+    expectedPayload["jettonMaster"] as string,
   );
   if (!canonicalResult.ok) {
     throw new Error(canonicalResult.detail);
   }
-  const canonicalMasterKey = canonicalResult.key;
 
-  // 11. Run filterAndNormalize
   const result = filterAndNormalize(
     expected as unknown as Parameters<typeof filterAndNormalize>[0],
-    canonicalMasterKey
+    canonicalResult.key,
   );
 
-  // 12. Assert pass and narrow FilterResult
   if (!result.pass) {
     throw new Error(`filterAndNormalize failed: ${result.reason} ${result.detail}`);
   }
 
   const norm = result.event;
 
-  // 13. Assert normalized event fields
   assertEq(norm.provider, "tonapi", "norm.provider");
   assertEq(norm.amountDecimal, "1000000", "norm.amountDecimal");
   assertEq(norm.detectedAt, expected["receivedAt"] as string, "norm.detectedAt");
@@ -232,45 +233,152 @@ async function main(): Promise<void> {
   assertEq(
     norm.destinationAddress,
     "0QC73QalKxi5vYfRjcVY2Ycn_W5XHr2eyMPVeQ1NnuB7YMFl",
-    "norm.destinationAddress"
+    "norm.destinationAddress",
   );
   assertEq(
     norm.jettonMaster,
     "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv",
-    "norm.jettonMaster"
+    "norm.jettonMaster",
   );
   assertEq(
     norm.txHash,
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "norm.txHash"
+    "norm.txHash",
   );
   assertEq(norm.lt, "47000000000001", "norm.lt");
   assertEq(norm.finality, "confirmed", "norm.finality");
 
-  // 14. Build candidate key string from normalized event
   const candidateKeyString = buildCandidateKeyString(norm);
   assert(
     typeof candidateKeyString === "string" && candidateKeyString.length > 0,
-    "candidateKeyString must be a non-empty string"
+    "candidateKeyString must be a non-empty string",
   );
 
-  // 15. Hash candidate key twice and assert hashes are equal
   const hash1 = hashCandidateKey(candidateKeyString);
   const hash2 = hashCandidateKey(candidateKeyString);
   assertEq(hash1, hash2, "candidateKey hash determinism (hash1 === hash2)");
 
-  // 16. Assert candidateId is a non-empty lowercase hex SHA-256 string
   const candidateId = hash1;
   assert(
     typeof candidateId === "string" && candidateId.length > 0,
-    "candidateId must be non-empty string"
+    "candidateId must be non-empty string",
   );
   assert(
     /^[0-9a-f]{64}$/.test(candidateId),
-    `candidateId must be lowercase hex SHA-256 (64 chars), got: "${candidateId}"`
+    `candidateId must be lowercase hex SHA-256 (64 chars), got: "${candidateId}"`,
+  );
+}
+
+function validateMissingTxHashFixture(): void {
+  const { raw: fixtureRaw, parsed: fixture } = readJsonFile(MISSING_TXHASH_FIXTURE_PATH);
+  const { raw: expectedRaw, parsed: expected } = readJsonFile(MISSING_TXHASH_EXPECTED_PATH);
+
+  checkSafety(fixtureRaw);
+  checkSafety(expectedRaw);
+
+  for (const key of [
+    "metadata",
+    "tonapiPayload",
+    "profilingMetadata",
+    "noiseSuppressionMetadata",
+  ]) {
+    assert(key in fixture, `missing txHash fixture missing top-level key: ${key}`);
+  }
+
+  const metadata = fixture["metadata"] as Record<string, unknown>;
+  assertEq(metadata["fixtureId"], "tonapi_synth_missing_txhash_001", "missing.metadata.fixtureId");
+  assertEq(metadata["provider"], "tonapi", "missing.metadata.provider");
+  assertEq(metadata["fixtureClass"], "synthetic_provider_sample", "missing.metadata.fixtureClass");
+  assertEq(metadata["realOrSynthetic"], "synthetic", "missing.metadata.realOrSynthetic");
+  assertEq(metadata["tonapiEndpointOrStreamName"], "tonapi_websocket_events", "missing.metadata.tonapiEndpointOrStreamName");
+  assertEq(
+    metadata["jettonMaster"],
+    "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv",
+    "missing.metadata.jettonMaster",
+  );
+  assertEq(metadata["expectedOutcome"], "reject_missing_tx_hash", "missing.metadata.expectedOutcome");
+  assertEq(metadata["codeLevelReason"], "MISSING_TX_HASH", "missing.metadata.codeLevelReason");
+  assertEq(metadata["reviewStatus"], "approved_for_fixture_commit", "missing.metadata.reviewStatus");
+
+  const tonapiPayload = fixture["tonapiPayload"] as Record<string, unknown>;
+  const actions = tonapiPayload["actions"] as Array<Record<string, unknown>>;
+  assert(Array.isArray(actions) && actions.length > 0, "missing.tonapiPayload.actions must be non-empty array");
+
+  const action = actions[0];
+  const jettonTransfer = action["JettonTransfer"] as Record<string, unknown>;
+  const baseTransactions = action["base_transactions"] as Array<Record<string, unknown>>;
+  assert(
+    Array.isArray(baseTransactions) && baseTransactions.length > 0,
+    "missing.base_transactions must be non-empty array",
   );
 
-  // 17. Print PASS
+  assertEq(action["type"], "JettonTransfer", "missing.action.type");
+  assertEq(action["status"], "ok", "missing.action.status");
+  assertNull(jettonTransfer["sender"] as null, "missing.JettonTransfer.sender");
+  assertEq(baseTransactions[0]["hash"], "", "missing.base_transactions[0].hash");
+
+  assertEq(expected["fixtureId"], "tonapi_synth_missing_txhash_001", "missing.expected.fixtureId");
+  assertEq(expected["expectedOutcome"], "reject_missing_tx_hash", "missing.expected.expectedOutcome");
+
+  const expectedResult = expected["expectedResult"] as Record<string, unknown>;
+  assertEq(expectedResult["pass"], false, "missing.expectedResult.pass");
+  assertEq(
+    expectedResult["codeLevelReason"],
+    "MISSING_TX_HASH",
+    "missing.expectedResult.codeLevelReason",
+  );
+
+  const rawProviderEvent = expected["rawProviderEvent"] as Record<string, unknown>;
+  const rawPayload = rawProviderEvent["payload"] as Record<string, unknown>;
+
+  assertEq(rawProviderEvent["provider"], "tonapi", "missing.rawProviderEvent.provider");
+  assertEq(
+    rawProviderEvent["receivedAt"],
+    "2023-11-14T22:13:20.000Z",
+    "missing.rawProviderEvent.receivedAt",
+  );
+  assertEq(rawPayload["eventType"], "jetton_transfer", "missing.payload.eventType");
+  assertNull(rawPayload["sourceAddress"] as null, "missing.payload.sourceAddress");
+  assertEq(
+    rawPayload["destinationAddress"],
+    (jettonTransfer["recipient"] as Record<string, unknown>)["address"],
+    "missing.destination mapping",
+  );
+  assertEq(
+    rawPayload["jettonMaster"],
+    (jettonTransfer["jetton"] as Record<string, unknown>)["address"],
+    "missing.jettonMaster mapping",
+  );
+  assertEq(rawPayload["amount"], jettonTransfer["amount"], "missing.amount mapping");
+  assertEq(rawPayload["txHash"], "", "missing.payload.txHash");
+  assertEq(rawPayload["lt"], baseTransactions[0]["lt"], "missing.lt mapping");
+  assertEq(rawPayload["traceId"], action["trace_id"], "missing.traceId mapping");
+  assertEq(rawPayload["actionIndex"], action["action_index"], "missing.actionIndex mapping");
+  assertNull(rawPayload["messageHash"] as null, "missing.payload.messageHash");
+  assertEq(rawPayload["finality"], "confirmed", "missing.payload.finality");
+
+  const canonicalResult = deriveCanonicalKey(
+    rawPayload["jettonMaster"] as string,
+  );
+  if (!canonicalResult.ok) {
+    throw new Error(canonicalResult.detail);
+  }
+
+  const result = filterAndNormalize(
+    rawProviderEvent as unknown as Parameters<typeof filterAndNormalize>[0],
+    canonicalResult.key,
+  );
+
+  if (result.pass) {
+    throw new Error("missing txHash fixture unexpectedly passed normalization");
+  }
+
+  assertEq(result.reason, "MISSING_TX_HASH", "missing filterAndNormalize reason");
+}
+
+async function main(): Promise<void> {
+  validatePassingFixture();
+  validateMissingTxHashFixture();
   console.log(`${LABEL} PASS`);
 }
 
