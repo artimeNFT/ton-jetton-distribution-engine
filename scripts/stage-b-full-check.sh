@@ -19,6 +19,9 @@ npx tsc --noEmit
 echo "[stage-b-full] Stage B-2 ingestion smoke"
 npx ts-node scripts/stage-b2-ingestion-smoke.ts
 
+echo "[stage-b-full] Stage B-2 TonAPI fixture smoke"
+npx ts-node scripts/stage-b2-tonapi-fixture-smoke.ts
+
 echo "[stage-b-full] Stage B-1 regression"
 ./scripts/stage-b1-regression.sh
 
