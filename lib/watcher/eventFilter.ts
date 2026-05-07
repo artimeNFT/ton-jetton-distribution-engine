@@ -3,9 +3,10 @@
  *
  * Stateless filter and field extractor for the Stage B-2 Watcher ingestion layer.
  *
- * B2 first pass: accepts only RawProviderEvent with provider === "fixture".
- * TonAPI- and TonCenter-specific payload extractors are not implemented here.
- * They are gated on approved real fixture samples and belong to a future pass.
+ * B2 accepts only provider-normalized RawProviderEvent objects.
+ * Provider wire formats are not admitted directly into this filter.
+ * Approved offline extractors must map provider-shaped input into
+ * NeutralEventPayload before calling filterAndNormalize.
  *
  * Hard constraints:
  * - No state. No I/O. No network. No logging.
