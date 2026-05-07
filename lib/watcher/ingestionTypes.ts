@@ -34,13 +34,18 @@ export type RejectionReasonCode =
 
 // ─── Raw Provider Event ───────────────────────────────────────────────────────
 //
-// provider is a literal "fixture" in B2 first pass.
-// TonAPI- and TonCenter-specific shapes are not admitted until real fixture
-// samples are approved. Real provider adapters (future) must map their wire
-// format into NeutralEventPayload before calling filterAndNormalize.
+// Provider-specific wire formats are not admitted directly into the filter
+// pipeline. Approved offline extractors must first map provider-shaped input
+// into NeutralEventPayload before calling filterAndNormalize.
+//
+// Adding a provider literal here is type-contract admission only. It does not
+// approve a client, network connection, live ingestion, polling, Dispatcher
+// integration, RunState writes, targets writes, signing, sending, or execution.
+
+export type ProviderName = "fixture" | "tonapi";
 
 export interface RawProviderEvent {
-  readonly provider: "fixture";
+  readonly provider: ProviderName;
   readonly receivedAt: string;            // ISO 8601 wall clock
   readonly payload: NeutralEventPayload;
 }
