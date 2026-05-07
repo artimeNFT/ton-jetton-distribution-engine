@@ -17,7 +17,11 @@
  * - No action collapsing. One RawProviderEvent per JettonTransfer action.
  */
 
-import type { RawProviderEvent } from "./ingestionTypes";
+import type {
+  AdvisoryAddressProfile,
+  AdvisoryProfile,
+  RawProviderEvent,
+} from "./ingestionTypes";
 
 export interface ExtractTonapiOptions {
   /**
@@ -33,6 +37,15 @@ export interface ExtractTonapiOptions {
    * The downstream filter validates the bounded value.
    */
   readonly finality: "confirmed" | "finalized";
+
+  /**
+   * Optional fixture/provider profiling metadata supplied by the caller.
+   *
+   * This is advisory-only pass-through metadata. It must not affect txHash, lt,
+   * traceId, actionIndex, amount, source, destination, finality, filtering,
+   * candidate identity, Dispatcher behavior, targets, or execution.
+   */
+  readonly profilingMetadata?: unknown;
 }
 
 type JsonObject = Record<string, unknown>;
@@ -50,6 +63,7 @@ export function extractTonapiRawProviderEvents(
     return [];
   }
 
+  const advisoryProfile = extractAdvisoryProfile(options.profilingMetadata);
   const output: RawProviderEvent[] = [];
 
   for (const action of actions) {
@@ -61,7 +75,7 @@ export function extractTonapiRawProviderEvents(
       continue;
     }
 
-    output.push(extractJettonTransferAction(action, input, options));
+    output.push(extractJettonTransferAction(action, input, options, advisoryProfile));
   }
 
   return output;
@@ -71,6 +85,7 @@ function extractJettonTransferAction(
   action: JsonObject,
   root: JsonObject,
   options: ExtractTonapiOptions,
+  advisoryProfile: AdvisoryProfile | null,
 ): RawProviderEvent {
   const transfer = isObject(action["JettonTransfer"])
     ? action["JettonTransfer"]
@@ -115,6 +130,48 @@ function extractJettonTransferAction(
       // Explicit caller-provided offline value. Never inferred from action.status.
       finality: options.finality,
     },
+    advisoryProfile,
+  };
+}
+
+function extractAdvisoryProfile(value: unknown): AdvisoryProfile | null {
+  if (!isObject(value)) {
+    return null;
+  }
+
+  const destination = extractAdvisoryAddressProfile(value);
+  if (destination === null) {
+    return null;
+  }
+
+  return {
+    source: null,
+    destination,
+  };
+}
+
+function extractAdvisoryAddressProfile(value: JsonObject): AdvisoryAddressProfile | null {
+  const walletTypeHint = optionalString(value["walletTypeHint"]);
+  const codeHash =
+    optionalString(value["codeHash"]) ??
+    optionalString(value["contractCodeHash"]);
+  const accountStatus = optionalString(value["accountStatus"]);
+  const entityLabel = optionalString(value["entityLabel"]);
+
+  if (
+    walletTypeHint === null &&
+    codeHash === null &&
+    accountStatus === null &&
+    entityLabel === null
+  ) {
+    return null;
+  }
+
+  return {
+    walletTypeHint,
+    codeHash,
+    accountStatus,
+    entityLabel,
   };
 }
 

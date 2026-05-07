@@ -9,7 +9,10 @@ import {
   hashCandidateKey,
 } from "../lib/watcher/candidateId";
 import { extractTonapiRawProviderEvents } from "../lib/watcher/tonapiExtractor";
-import type { RawProviderEvent } from "../lib/watcher/ingestionTypes";
+import type {
+  AdvisoryProfile,
+  RawProviderEvent,
+} from "../lib/watcher/ingestionTypes";
 
 const LABEL = "[stage-b2-tonapi-fixture-smoke]";
 
@@ -48,7 +51,7 @@ const SAFETY_BANNED_PATTERNS: string[] = [
   "private-key",
 ];
 
-function assert(condition: boolean, message: string): void {
+function assert(condition: boolean, message: string): asserts condition {
   if (!condition) {
     throw new Error(`Assertion failed: ${message}`);
   }
@@ -118,6 +121,21 @@ function assertRawProviderEventsEqual(
   assertEq(actual.payload.finality, expected.payload.finality, `${label}.payload.finality`);
 }
 
+function assertHappyAdvisoryProfile(profile: AdvisoryProfile | null | undefined): void {
+  assert(profile !== null && profile !== undefined, "happy advisoryProfile must exist");
+  assertNull(profile.source, "happy advisoryProfile.source");
+  assert(profile.destination !== null, "happy advisoryProfile.destination must exist");
+
+  assertEq(profile.destination.walletTypeHint, "v4", "happy advisoryProfile.destination.walletTypeHint");
+  assertEq(
+    profile.destination.codeHash,
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "happy advisoryProfile.destination.codeHash",
+  );
+  assertEq(profile.destination.accountStatus, "active", "happy advisoryProfile.destination.accountStatus");
+  assertNull(profile.destination.entityLabel, "happy advisoryProfile.destination.entityLabel");
+}
+
 function validatePassingFixture(): void {
   const { raw: fixtureRaw, parsed: fixture } = readJsonFile(FIXTURE_PATH);
   const { raw: expectedRaw, parsed: expected } = readJsonFile(EXPECTED_PATH);
@@ -158,6 +176,16 @@ function validatePassingFixture(): void {
 
   checkSafety(fixtureRaw);
   checkSafety(expectedRaw);
+
+  const profilingMetadata = fixture["profilingMetadata"] as Record<string, unknown>;
+  assertEq(profilingMetadata["walletTypeHint"], "v4", "profilingMetadata.walletTypeHint");
+  assertEq(
+    profilingMetadata["contractCodeHash"],
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "profilingMetadata.contractCodeHash",
+  );
+  assertEq(profilingMetadata["accountStatus"], "active", "profilingMetadata.accountStatus");
+  assertNull(profilingMetadata["entityLabel"], "profilingMetadata.entityLabel");
 
   const tonapiPayload = fixture["tonapiPayload"] as Record<string, unknown>;
   const actions = tonapiPayload["actions"] as Array<Record<string, unknown>>;
@@ -244,10 +272,12 @@ function validatePassingFixture(): void {
   const extractedEvents = extractTonapiRawProviderEvents(tonapiPayload, {
     receivedAt: RECEIVED_AT,
     finality: FINALITY,
+    profilingMetadata: fixture["profilingMetadata"],
   });
 
   assertEq(extractedEvents.length, 1, "happy extractor event count");
   assertRawProviderEventsEqual(extractedEvents[0], manualRaw, "happy extractor output");
+  assertHappyAdvisoryProfile(extractedEvents[0].advisoryProfile);
 
   const canonicalMasterKey = getCanonicalMasterKey(manualRaw.payload.jettonMaster);
 
@@ -336,6 +366,7 @@ function validateMissingTxHashFixture(): void {
   assertEq(metadata["expectedOutcome"], "reject_missing_tx_hash", "missing.metadata.expectedOutcome");
   assertEq(metadata["codeLevelReason"], "MISSING_TX_HASH", "missing.metadata.codeLevelReason");
   assertEq(metadata["reviewStatus"], "approved_for_fixture_commit", "missing.metadata.reviewStatus");
+  assertNull(fixture["profilingMetadata"], "missing.profilingMetadata");
 
   const tonapiPayload = fixture["tonapiPayload"] as Record<string, unknown>;
   const actions = tonapiPayload["actions"] as Array<Record<string, unknown>>;
@@ -393,10 +424,12 @@ function validateMissingTxHashFixture(): void {
   const extractedEvents = extractTonapiRawProviderEvents(tonapiPayload, {
     receivedAt: RECEIVED_AT,
     finality: FINALITY,
+    profilingMetadata: fixture["profilingMetadata"],
   });
 
   assertEq(extractedEvents.length, 1, "missing extractor event count");
   assertRawProviderEventsEqual(extractedEvents[0], rawProviderEvent, "missing extractor output");
+  assertNull(extractedEvents[0].advisoryProfile ?? null, "missing extractor advisoryProfile");
 
   const canonicalMasterKey = getCanonicalMasterKey(rawPayload.jettonMaster);
 
