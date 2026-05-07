@@ -166,6 +166,7 @@ export function filterAndNormalize(
     detectedAt: raw.receivedAt,
     eventTimestamp,
     finality,
+    advisoryProfile: raw.advisoryProfile ?? null,
   };
 
   return { pass: true, event };

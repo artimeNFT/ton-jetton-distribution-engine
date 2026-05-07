@@ -314,6 +314,7 @@ function validatePassingFixture(): void {
   );
   assertEq(norm.lt, "47000000000001", "norm.lt");
   assertEq(norm.finality, "confirmed", "norm.finality");
+  assertHappyAdvisoryProfile(norm.advisoryProfile);
 
   const candidateKeyString = buildCandidateKeyString(norm);
   assert(
