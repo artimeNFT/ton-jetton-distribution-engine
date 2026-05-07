@@ -28,6 +28,21 @@ function activeCommander(): CommanderStateReader {
   };
 }
 
+function passiveCommander(): CommanderStateReader {
+  return {
+    async readSafetyState() {
+      return {
+        status: "passive",
+        emergencyStop: true,
+        lockdown: false,
+        candidateWritesAllowed: false,
+        reason: "smoke_passive",
+        checkedAt: "2026-05-05T00:00:00.000Z",
+      };
+    },
+  };
+}
+
 async function main(): Promise<void> {
   const dataDir = path.resolve(".tmp/stage-b2-offline-orchestrator-smoke");
   const campaignId = "stage_b2_offline_orchestrator_smoke";
@@ -138,6 +153,74 @@ async function main(): Promise<void> {
   const duplicateEvent = JSON.parse(eventLines[0]!);
   assert.equal(duplicateEvent.eventType, "duplicate_observation");
   assert.equal(duplicateEvent.cursorLt, "900000001");
+
+  const rateLimitedEvent: RawProviderEvent = {
+    ...event,
+    payload: {
+      ...event.payload,
+      txHash: "tx-offline-orchestrator-rate-limited",
+      traceId: "trace-offline-orchestrator-rate-limited",
+      messageHash: "msg-offline-orchestrator-rate-limited",
+      lt: "900000002",
+    },
+  };
+
+  const exhaustedRateCap = createRateCap(1, () => 1000);
+  assert.equal(exhaustedRateCap.isAllowed(), true);
+
+  const rateLimited = await ingestOfflineCandidateEvents({
+    events: [rateLimitedEvent],
+    config,
+    commander: activeCommander(),
+    dedup,
+    rateCap: exhaustedRateCap,
+  });
+
+  assert.equal(rateLimited.accepted, 0);
+  assert.equal(rateLimited.rateLimited, 1);
+  assert.equal(rateLimited.cursor?.lt, "900000002");
+
+  const eventLinesAfterRateLimit = (await fs.readFile(eventsPath, "utf8"))
+    .trim()
+    .split("\n");
+  assert.equal(eventLinesAfterRateLimit.length, 2);
+
+  const rateCapEvent = JSON.parse(eventLinesAfterRateLimit[1]!);
+  assert.equal(rateCapEvent.eventType, "rate_cap_data_loss");
+  assert.equal(rateCapEvent.cursorLt, "900000002");
+
+  const passiveEvent: RawProviderEvent = {
+    ...event,
+    payload: {
+      ...event.payload,
+      txHash: "tx-offline-orchestrator-passive",
+      traceId: "trace-offline-orchestrator-passive",
+      messageHash: "msg-offline-orchestrator-passive",
+      lt: "900000003",
+    },
+  };
+
+  const passive = await ingestOfflineCandidateEvents({
+    events: [passiveEvent],
+    config,
+    commander: passiveCommander(),
+    dedup,
+    rateCap,
+  });
+
+  assert.equal(passive.accepted, 0);
+  assert.equal(passive.blockedByCommander, 1);
+  assert.equal(passive.cursor?.lt, "900000003");
+
+  const candidateLinesAfterPassive = (await fs.readFile(candidatesPath, "utf8"))
+    .trim()
+    .split("\n");
+  assert.equal(candidateLinesAfterPassive.length, 1);
+
+  const eventLinesAfterPassive = (await fs.readFile(eventsPath, "utf8"))
+    .trim()
+    .split("\n");
+  assert.equal(eventLinesAfterPassive.length, 2);
 
   await fs.rm(dataDir, { recursive: true, force: true });
   console.log("[stage-b2-offline-orchestrator-smoke] PASS");
