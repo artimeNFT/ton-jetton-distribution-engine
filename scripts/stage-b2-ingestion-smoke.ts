@@ -9,6 +9,7 @@ import {
   extractCandidateKeyComponents,
   hashCandidateKey,
 } from "../lib/watcher/candidateId";
+import { buildCandidateRecord } from "../lib/watcher/candidateRecordBuilder";
 import {
   appendCandidate,
   appendCandidateEvent,
@@ -22,7 +23,6 @@ import {
   isCandidateWriteAllowed,
 } from "../lib/watcher/commanderState";
 import type {
-  CandidateRecord,
   RawProviderEvent,
 } from "../lib/watcher/ingestionTypes";
 
@@ -33,6 +33,7 @@ async function main(): Promise<void> {
 
   const jettonMaster = "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv";
   const destination = "0QC73QalKxi5vYfRjcVY2Ycn_W5XHr2eyMPVeQ1NnuB7YMFl";
+  const source = "0QAxhqbAzAOPii0lArC6rhM1kVhSci0P1xhORJ3nTf8xvhCv";
   const receivedAt = "2026-05-05T00:00:00.000Z";
 
   const masterKeyResult = deriveCanonicalKey(jettonMaster);
@@ -44,7 +45,7 @@ async function main(): Promise<void> {
     receivedAt,
     payload: {
       eventType: "jetton_transfer",
-      sourceAddress: null,
+      sourceAddress: source,
       destinationAddress: destination,
       jettonMaster,
       amount: "0001",
@@ -55,6 +56,20 @@ async function main(): Promise<void> {
       lt: "123456789",
       eventTimestamp: "2026-05-05T00:00:01.000Z",
       finality: "confirmed",
+    },
+    advisoryProfile: {
+      destination: {
+        walletTypeHint: "v4",
+        codeHash: "dest-code-hash-smoke",
+        accountStatus: "active",
+        entityLabel: "destination-label-smoke",
+      },
+      source: {
+        walletTypeHint: "highload-v2",
+        codeHash: "source-code-hash-smoke",
+        accountStatus: "active",
+        entityLabel: "source-label-smoke",
+      },
     },
   };
 
@@ -69,39 +84,62 @@ async function main(): Promise<void> {
   const keyString = buildCandidateKeyString(filtered.event);
   const candidateId = hashCandidateKey(keyString);
 
-  const record: CandidateRecord = {
-    candidateId,
-    candidateKeyComponents: extractCandidateKeyComponents(filtered.event),
-    observedByProvider: filtered.event.provider,
-    sourceEventRef: filtered.event.txHash,
-    jettonMaster: filtered.event.jettonMaster,
-    jettonMasterCanonicalKey: filtered.event.jettonMasterCanonicalKey,
-    destinationAddress: filtered.event.destinationAddress,
-    destinationCanonicalKey: filtered.event.destinationCanonicalKey,
-    sourceAddress: filtered.event.sourceAddress,
-    sourceCanonicalKey: filtered.event.sourceCanonicalKey,
-    amount: filtered.event.amountDecimal,
-    lt: filtered.event.lt,
-    detectedAt: filtered.event.detectedAt,
-    eventTimestamp: filtered.event.eventTimestamp,
-    finality: filtered.event.finality,
-    profileStatus: "unresolved",
-    profile: {
-      destination: {
-        accountStatus: null,
-        codeHash: null,
-        walletType: null,
-        entityLabel: null,
-      },
-      source: {
-        accountStatus: null,
-        codeHash: null,
-        walletType: null,
-        entityLabel: null,
+  const record = buildCandidateRecord(filtered.event);
+
+  assert.equal(record.candidateId, candidateId);
+  assert.deepEqual(
+    record.candidateKeyComponents,
+    extractCandidateKeyComponents(filtered.event),
+  );
+  assert.equal(record.decision, "pending");
+  assert.equal(record.profileStatus, "partial");
+
+  assert.deepEqual(record.profile.destination, {
+    accountStatus: "active",
+    codeHash: "dest-code-hash-smoke",
+    walletType: "v4",
+    entityLabel: "destination-label-smoke",
+  });
+
+  assert.deepEqual(record.profile.source, {
+    accountStatus: "active",
+    codeHash: "source-code-hash-smoke",
+    walletType: "highload-v2",
+    entityLabel: "source-label-smoke",
+  });
+
+  const noAdvisory = filterAndNormalize(
+    {
+      ...raw,
+      advisoryProfile: null,
+      payload: {
+        ...raw.payload,
+        txHash: "tx-smoke-no-advisory",
+        traceId: "trace-smoke-no-advisory",
+        messageHash: "msg-smoke-no-advisory",
+        lt: "123456790",
       },
     },
-    decision: "pending",
-  };
+    masterKeyResult.key,
+  );
+  if (!noAdvisory.pass) throw new Error(noAdvisory.detail);
+  assert.equal(noAdvisory.pass, true);
+
+  const noAdvisoryRecord = buildCandidateRecord(noAdvisory.event);
+  assert.equal(noAdvisoryRecord.decision, "pending");
+  assert.equal(noAdvisoryRecord.profileStatus, "unresolved");
+  assert.deepEqual(noAdvisoryRecord.profile.destination, {
+    accountStatus: null,
+    codeHash: null,
+    walletType: null,
+    entityLabel: null,
+  });
+  assert.deepEqual(noAdvisoryRecord.profile.source, {
+    accountStatus: null,
+    codeHash: null,
+    walletType: null,
+    entityLabel: null,
+  });
 
   await appendCandidate(dataDir, campaignId, record);
 
