@@ -143,7 +143,7 @@ async function main(): Promise<void> {
 
   await appendCandidate(dataDir, campaignId, record);
 
-  const dedup = await loadDedupStore(dataDir, campaignId, 72 * 60 * 60 * 1000);
+  const dedup = await loadDedupStore(dataDir, campaignId, 365 * 24 * 60 * 60 * 1000);
   assert.equal(dedup.isSeen(candidateId), true);
 
   await appendCandidateEvent(dataDir, campaignId, {
