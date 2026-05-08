@@ -90,6 +90,11 @@ export interface CandidateDecisionRecord {
   readonly rulesetVersion: string;
   readonly blacklistVersion: string;
   readonly schemaVersion: string;
+  readonly traceability: CandidateDecisionTraceability;
+  readonly budgetSnapshot: CandidateBudgetSnapshot;
+  readonly finalitySnapshot: CandidateFinalitySnapshot;
+  readonly rulesetSnapshot: CandidateRulesetSnapshot;
+  readonly blacklistSnapshot: CandidateBlacklistSnapshot;
 }
 
 export interface CandidateDecisionTraceability {
@@ -130,4 +135,57 @@ export function hashDecisionKey(keyString: string): string {
 
 export function buildDecisionId(input: CandidateDecisionIdInput): string {
   return hashDecisionKey(buildDecisionKeyString(input));
+}
+
+export interface BuildCandidateDecisionRecordInput {
+  readonly candidate: CandidateRecord;
+  readonly decisionRunId: string;
+  readonly builderRunId: string | null;
+  readonly decision: CandidateDecisionState;
+  readonly decisionReason: CandidateDecisionReason;
+  readonly decisionAt: string;
+  readonly candidateAgeMs: number;
+  readonly decidedBy: string;
+  readonly manualOverride: boolean;
+  readonly traceability: CandidateDecisionTraceability;
+  readonly budgetSnapshot: CandidateBudgetSnapshot;
+  readonly finalitySnapshot: CandidateFinalitySnapshot;
+  readonly rulesetSnapshot: CandidateRulesetSnapshot;
+  readonly blacklistSnapshot: CandidateBlacklistSnapshot;
+  readonly schemaVersion: string;
+}
+
+export function buildCandidateDecisionRecord(
+  input: BuildCandidateDecisionRecordInput,
+): CandidateDecisionRecord {
+  const decisionId = buildDecisionId({
+    candidateId: input.candidate.candidateId,
+    decisionRunId: input.decisionRunId,
+    decisionReason: input.decisionReason,
+    rulesetVersion: input.rulesetSnapshot.rulesetVersion,
+    blacklistVersion: input.blacklistSnapshot.blacklistVersion,
+    budgetPolicyVersion: input.budgetSnapshot.budgetPolicyVersion,
+  });
+
+  return {
+    decisionId,
+    candidateId: input.candidate.candidateId,
+    decisionRunId: input.decisionRunId,
+    builderRunId: input.builderRunId,
+    decision: input.decision,
+    decisionReason: input.decisionReason,
+    decisionAt: input.decisionAt,
+    candidateObservedAt: input.candidate.detectedAt,
+    candidateAgeMs: input.candidateAgeMs,
+    decidedBy: input.decidedBy,
+    manualOverride: input.manualOverride,
+    rulesetVersion: input.rulesetSnapshot.rulesetVersion,
+    blacklistVersion: input.blacklistSnapshot.blacklistVersion,
+    schemaVersion: input.schemaVersion,
+    traceability: input.traceability,
+    budgetSnapshot: input.budgetSnapshot,
+    finalitySnapshot: input.finalitySnapshot,
+    rulesetSnapshot: input.rulesetSnapshot,
+    blacklistSnapshot: input.blacklistSnapshot,
+  };
 }
