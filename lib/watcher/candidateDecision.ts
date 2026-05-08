@@ -372,3 +372,25 @@ export function validateBuildCandidateDecisionRecordInput(
 
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
+
+export type CandidateDecisionBuildResult =
+  | { readonly ok: true; readonly record: CandidateDecisionRecord }
+  | {
+      readonly ok: false;
+      readonly issues: readonly CandidateDecisionValidationIssue[];
+    };
+
+export function tryBuildCandidateDecisionRecord(
+  input: BuildCandidateDecisionRecordInput,
+): CandidateDecisionBuildResult {
+  const validation = validateBuildCandidateDecisionRecordInput(input);
+
+  if (!validation.ok) {
+    return { ok: false, issues: validation.issues };
+  }
+
+  return {
+    ok: true,
+    record: buildCandidateDecisionRecord(input),
+  };
+}
