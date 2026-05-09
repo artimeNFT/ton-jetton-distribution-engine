@@ -141,3 +141,82 @@ export function validateDecisionStoreRecord(
 
   return { ok: true };
 }
+
+export type DecisionStoreDuplicateClassification =
+  | { readonly kind: "new_record" }
+  | { readonly kind: "identical_duplicate"; readonly existingDecisionId: string }
+  | {
+      readonly kind: "conflicting_duplicate";
+      readonly existingDecisionId: string;
+      readonly reason: string;
+    };
+
+function canonicalRecordContent(record: CandidateDecisionRecord): string {
+  return JSON.stringify(record);
+}
+
+function hasSameCandidateDecisionRun(
+  existing: CandidateDecisionRecord,
+  incoming: CandidateDecisionRecord,
+): boolean {
+  return (
+    existing.candidateId === incoming.candidateId &&
+    existing.decisionRunId === incoming.decisionRunId
+  );
+}
+
+function hasSnapshotConflict(
+  existing: CandidateDecisionRecord,
+  incoming: CandidateDecisionRecord,
+): boolean {
+  return (
+    JSON.stringify(existing.rulesetSnapshot) !== JSON.stringify(incoming.rulesetSnapshot) ||
+    JSON.stringify(existing.blacklistSnapshot) !== JSON.stringify(incoming.blacklistSnapshot) ||
+    JSON.stringify(existing.budgetSnapshot) !== JSON.stringify(incoming.budgetSnapshot) ||
+    JSON.stringify(existing.finalitySnapshot) !== JSON.stringify(incoming.finalitySnapshot)
+  );
+}
+
+export function classifyDecisionStoreDuplicate(
+  existing: CandidateDecisionRecord | null,
+  incoming: CandidateDecisionRecord,
+): DecisionStoreDuplicateClassification {
+  if (existing === null) {
+    return { kind: "new_record" };
+  }
+
+  if (existing.decisionId === incoming.decisionId) {
+    if (canonicalRecordContent(existing) === canonicalRecordContent(incoming)) {
+      return {
+        kind: "identical_duplicate",
+        existingDecisionId: existing.decisionId,
+      };
+    }
+
+    return {
+      kind: "conflicting_duplicate",
+      existingDecisionId: existing.decisionId,
+      reason: "same_decision_id_different_content",
+    };
+  }
+
+  if (hasSameCandidateDecisionRun(existing, incoming)) {
+    if (hasSnapshotConflict(existing, incoming)) {
+      return {
+        kind: "conflicting_duplicate",
+        existingDecisionId: existing.decisionId,
+        reason: "same_candidate_run_snapshot_conflict",
+      };
+    }
+
+    if (canonicalRecordContent(existing) !== canonicalRecordContent(incoming)) {
+      return {
+        kind: "conflicting_duplicate",
+        existingDecisionId: existing.decisionId,
+        reason: "same_candidate_run_different_content",
+      };
+    }
+  }
+
+  return { kind: "new_record" };
+}
