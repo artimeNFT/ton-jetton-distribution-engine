@@ -306,3 +306,93 @@ export function buildDecisionStoreInMemoryIndex(
     },
   };
 }
+
+export type DecisionStoreAppendPreflightResult =
+  | {
+      readonly ok: true;
+      readonly action: "proceed";
+      readonly decisionId: string;
+    }
+  | {
+      readonly ok: true;
+      readonly action: "skip";
+      readonly decisionId: string;
+      readonly reason: "identical_duplicate";
+    }
+  | {
+      readonly ok: false;
+      readonly action: "hard_fail";
+      readonly reason: string;
+      readonly decisionId: string;
+      readonly candidateId: string;
+      readonly decisionRunId: string;
+    };
+
+function findExistingAppendPreflightRecord(
+  index: DecisionStoreInMemoryIndex,
+  incoming: CandidateDecisionRecord,
+): CandidateDecisionRecord | null {
+  const sameDecisionId = index.byDecisionId.get(incoming.decisionId) ?? null;
+
+  if (sameDecisionId !== null) {
+    return sameDecisionId;
+  }
+
+  for (const existing of index.byDecisionId.values()) {
+    if (
+      existing.candidateId === incoming.candidateId &&
+      existing.decisionRunId === incoming.decisionRunId
+    ) {
+      return existing;
+    }
+  }
+
+  return null;
+}
+
+export function preflightDecisionStoreAppend(
+  index: DecisionStoreInMemoryIndex,
+  incoming: CandidateDecisionRecord,
+): DecisionStoreAppendPreflightResult {
+  const validation = validateDecisionStoreRecord(incoming);
+
+  if (!validation.ok) {
+    return {
+      ok: false,
+      action: "hard_fail",
+      reason: validation.reason,
+      decisionId: incoming.decisionId,
+      candidateId: incoming.candidateId,
+      decisionRunId: incoming.decisionRunId,
+    };
+  }
+
+  const existing = findExistingAppendPreflightRecord(index, incoming);
+  const classification = classifyDecisionStoreDuplicate(existing, incoming);
+
+  if (classification.kind === "new_record") {
+    return {
+      ok: true,
+      action: "proceed",
+      decisionId: incoming.decisionId,
+    };
+  }
+
+  if (classification.kind === "identical_duplicate") {
+    return {
+      ok: true,
+      action: "skip",
+      decisionId: incoming.decisionId,
+      reason: "identical_duplicate",
+    };
+  }
+
+  return {
+    ok: false,
+    action: "hard_fail",
+    reason: classification.reason,
+    decisionId: incoming.decisionId,
+    candidateId: incoming.candidateId,
+    decisionRunId: incoming.decisionRunId,
+  };
+}

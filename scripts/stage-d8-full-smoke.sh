@@ -16,4 +16,7 @@ npx ts-node scripts/stage-d8-3-decision-store-duplicate-classifier-smoke.ts
 echo "[stage-d8-full] D-8.4 in-memory index smoke"
 npx ts-node scripts/stage-d8-4-decision-store-in-memory-index-smoke.ts
 
+echo "[stage-d8-full] D-8.7 append preflight smoke"
+npx ts-node scripts/stage-d8-7-decision-store-append-preflight-smoke.ts
+
 echo "[stage-d8-full] PASS"
