@@ -1,5 +1,5 @@
 import * as assert from "assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -14,6 +14,15 @@ import type { BuildCandidateDecisionRecordInput } from "../lib/watcher/candidate
 import type { CandidateRecord } from "../lib/watcher/ingestionTypes";
 
 const LABEL = "[stage-d8-10-decision-store-append-writer-smoke]";
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function sampleInput(): BuildCandidateDecisionRecordInput {
   return {
@@ -141,10 +150,89 @@ async function testRejectsHardFailPlan(): Promise<void> {
   });
 }
 
+async function testRejectedPlansDoNotCreateFile(): Promise<void> {
+  const dir = await mkdtemp(join(tmpdir(), "decision-store-writer-reject-"));
+  const previousCwd = process.cwd();
+
+  try {
+    process.chdir(dir);
+    const path = "data/decision-store/decisions.jsonl";
+
+    await appendApprovedDecisionStorePlan({
+      ok: true,
+      action: "skip_duplicate",
+      normalizedPath: path,
+      decisionId: "decision-id-skip",
+      reason: "identical_duplicate",
+    });
+
+    await appendApprovedDecisionStorePlan({
+      ok: false,
+      action: "hard_fail",
+      reason: "conflict",
+      decisionId: "decision-id-hard-fail",
+      candidateId: "candidate-hard-fail",
+      decisionRunId: "run-hard-fail",
+      normalizedPath: path,
+    });
+
+    assert.equal(await fileExists(path), false);
+  } finally {
+    process.chdir(previousCwd);
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+async function testTwoProceedPlansAppendTwoLinesInOrder(): Promise<void> {
+  const dir = await mkdtemp(join(tmpdir(), "decision-store-writer-double-"));
+  const previousCwd = process.cwd();
+
+  try {
+    process.chdir(dir);
+    const path = "data/decision-store/decisions.jsonl";
+
+    const first = buildCandidateDecisionRecord(sampleInput());
+    const second = buildCandidateDecisionRecord({
+      ...sampleInput(),
+      candidate: {
+        ...sampleInput().candidate,
+        candidateId: "candidate-store-writer-002",
+      } as CandidateRecord,
+    });
+
+    const indexResult = buildDecisionStoreInMemoryIndex([]);
+    assert.equal(indexResult.ok, true);
+    if (!indexResult.ok) throw new Error("expected valid index");
+
+    const firstPlan = buildDecisionStoreAppendPlan(path, indexResult.index, first);
+    const secondPlan = buildDecisionStoreAppendPlan(path, indexResult.index, second);
+
+    assert.equal(firstPlan.ok, true);
+    assert.equal(secondPlan.ok, true);
+    if (!firstPlan.ok || firstPlan.action !== "proceed_append") {
+      throw new Error("expected first proceed_append");
+    }
+    if (!secondPlan.ok || secondPlan.action !== "proceed_append") {
+      throw new Error("expected second proceed_append");
+    }
+
+    await appendApprovedDecisionStorePlan(firstPlan);
+    await appendApprovedDecisionStorePlan(secondPlan);
+
+    const content = await readFile(path, "utf8");
+    assert.equal(content, firstPlan.serializedLine + secondPlan.serializedLine);
+  } finally {
+    process.chdir(previousCwd);
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
 async function main(): Promise<void> {
   await testApprovedPlanAppendsSerializedLine();
   await testRejectsNonProceedPlan();
   await testRejectsHardFailPlan();
+  await testRejectedPlansDoNotCreateFile();
+  await testTwoProceedPlansAppendTwoLinesInOrder();
   console.log(`${LABEL} PASS`);
 }
 
