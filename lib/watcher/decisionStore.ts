@@ -438,3 +438,93 @@ export function preflightDecisionStorePath(
 
   return { ok: true, normalizedPath };
 }
+
+export type DecisionStoreAppendPlanResult =
+  | {
+      readonly ok: true;
+      readonly action: "proceed_append";
+      readonly normalizedPath: string;
+      readonly decisionId: string;
+      readonly serializedLine: string;
+    }
+  | {
+      readonly ok: true;
+      readonly action: "skip_duplicate";
+      readonly normalizedPath: string;
+      readonly decisionId: string;
+      readonly reason: "identical_duplicate";
+    }
+  | {
+      readonly ok: false;
+      readonly action: "hard_fail";
+      readonly reason: string;
+      readonly decisionId: string;
+      readonly candidateId: string;
+      readonly decisionRunId: string;
+      readonly normalizedPath?: string;
+    };
+
+export function buildDecisionStoreAppendPlan(
+  path: string,
+  index: DecisionStoreInMemoryIndex,
+  incoming: CandidateDecisionRecord,
+): DecisionStoreAppendPlanResult {
+  const pathPreflight = preflightDecisionStorePath(path);
+
+  if (!pathPreflight.ok) {
+    return {
+      ok: false,
+      action: "hard_fail",
+      reason: pathPreflight.reason,
+      decisionId: incoming.decisionId,
+      candidateId: incoming.candidateId,
+      decisionRunId: incoming.decisionRunId,
+    };
+  }
+
+  const appendPreflight = preflightDecisionStoreAppend(index, incoming);
+
+  if (!appendPreflight.ok) {
+    return {
+      ok: false,
+      action: "hard_fail",
+      reason: appendPreflight.reason,
+      decisionId: incoming.decisionId,
+      candidateId: incoming.candidateId,
+      decisionRunId: incoming.decisionRunId,
+      normalizedPath: pathPreflight.normalizedPath,
+    };
+  }
+
+  if (appendPreflight.action === "skip") {
+    return {
+      ok: true,
+      action: "skip_duplicate",
+      normalizedPath: pathPreflight.normalizedPath,
+      decisionId: incoming.decisionId,
+      reason: "identical_duplicate",
+    };
+  }
+
+  const serialization = serializeDecisionRecordToJsonl(incoming);
+
+  if (!serialization.ok) {
+    return {
+      ok: false,
+      action: "hard_fail",
+      reason: serialization.reason,
+      decisionId: incoming.decisionId,
+      candidateId: incoming.candidateId,
+      decisionRunId: incoming.decisionRunId,
+      normalizedPath: pathPreflight.normalizedPath,
+    };
+  }
+
+  return {
+    ok: true,
+    action: "proceed_append",
+    normalizedPath: pathPreflight.normalizedPath,
+    decisionId: incoming.decisionId,
+    serializedLine: serialization.line,
+  };
+}

@@ -22,4 +22,7 @@ npx ts-node scripts/stage-d8-7-decision-store-append-preflight-smoke.ts
 echo "[stage-d8-full] D-8.8 path preflight smoke"
 npx ts-node scripts/stage-d8-8-decision-store-path-preflight-smoke.ts
 
+echo "[stage-d8-full] D-8.9 append plan smoke"
+npx ts-node scripts/stage-d8-9-decision-store-append-plan-smoke.ts
+
 echo "[stage-d8-full] PASS"
