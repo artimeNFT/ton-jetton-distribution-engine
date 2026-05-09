@@ -15,7 +15,14 @@
  * - No signing, sending, broadcasting, or execution.
  */
 
-import type { CandidateDecisionRecord } from "./candidateDecision";
+import {
+  buildDecisionId,
+  validateBuildCandidateDecisionRecordInput,
+  type BuildCandidateDecisionRecordInput,
+  type CandidateDecisionRecord,
+  type CandidateDecisionValidationIssue,
+} from "./candidateDecision";
+import type { CandidateRecord } from "./ingestionTypes";
 
 export type DecisionStoreSerializationResult =
   | { readonly ok: true; readonly line: string }
@@ -69,4 +76,68 @@ export function parseDecisionRecordJsonlLine(
   } catch {
     return { ok: false, reason: "parse_failed" };
   }
+}
+
+export type DecisionStoreRecordValidationResult =
+  | { readonly ok: true }
+  | {
+      readonly ok: false;
+      readonly reason: string;
+      readonly issues?: readonly CandidateDecisionValidationIssue[];
+    };
+
+function decisionRecordToValidationInput(
+  record: CandidateDecisionRecord,
+): BuildCandidateDecisionRecordInput {
+  return {
+    candidate: {
+      candidateId: record.candidateId,
+      detectedAt: record.candidateObservedAt,
+      finality: record.finalitySnapshot.finality,
+    } as CandidateRecord,
+    decisionRunId: record.decisionRunId,
+    builderRunId: record.builderRunId,
+    decision: record.decision,
+    decisionReason: record.decisionReason,
+    decisionAt: record.decisionAt,
+    candidateAgeMs: record.candidateAgeMs,
+    decidedBy: record.decidedBy,
+    manualOverride: record.manualOverride,
+    traceability: record.traceability,
+    budgetSnapshot: record.budgetSnapshot,
+    finalitySnapshot: record.finalitySnapshot,
+    rulesetSnapshot: record.rulesetSnapshot,
+    blacklistSnapshot: record.blacklistSnapshot,
+    schemaVersion: record.schemaVersion,
+  };
+}
+
+export function validateDecisionStoreRecord(
+  record: CandidateDecisionRecord,
+): DecisionStoreRecordValidationResult {
+  const input = decisionRecordToValidationInput(record);
+  const validation = validateBuildCandidateDecisionRecordInput(input);
+
+  if (!validation.ok) {
+    return {
+      ok: false,
+      reason: "record_validation_failed",
+      issues: validation.issues,
+    };
+  }
+
+  const expectedDecisionId = buildDecisionId({
+    candidateId: record.candidateId,
+    decisionRunId: record.decisionRunId,
+    decisionReason: record.decisionReason,
+    rulesetVersion: record.rulesetSnapshot.rulesetVersion,
+    blacklistVersion: record.blacklistSnapshot.blacklistVersion,
+    budgetPolicyVersion: record.budgetSnapshot.budgetPolicyVersion,
+  });
+
+  if (record.decisionId !== expectedDecisionId) {
+    return { ok: false, reason: "decision_id_mismatch" };
+  }
+
+  return { ok: true };
 }
