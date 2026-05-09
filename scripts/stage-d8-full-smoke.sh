@@ -31,4 +31,7 @@ npx ts-node scripts/stage-d8-10-decision-store-append-writer-smoke.ts
 echo "[stage-d8-full] D-8.12 recovery parser smoke"
 npx ts-node scripts/stage-d8-12-decision-store-recovery-parser-smoke.ts
 
+echo "[stage-d8-full] D-8.13 recovery file reader smoke"
+npx ts-node scripts/stage-d8-13-decision-store-recovery-file-reader-smoke.ts
+
 echo "[stage-d8-full] PASS"

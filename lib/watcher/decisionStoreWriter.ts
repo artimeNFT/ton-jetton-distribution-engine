@@ -14,9 +14,14 @@
  * - No Dispatcher / RunState / targets / execution coupling.
  */
 
-import { mkdir, appendFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { DecisionStoreAppendPlanResult } from "./decisionStore";
+import {
+  preflightDecisionStorePath,
+  recoverDecisionStoreFromJsonl,
+  type DecisionStoreAppendPlanResult,
+  type DecisionStoreRecoveryParseResult,
+} from "./decisionStore";
 
 export type DecisionStoreAppendWriterResult =
   | { readonly ok: true; readonly action: "appended"; readonly normalizedPath: string }
@@ -37,4 +42,29 @@ export async function appendApprovedDecisionStorePlan(
     action: "appended",
     normalizedPath: plan.normalizedPath,
   };
+}
+
+export type DecisionStoreRecoveryFileReaderResult =
+  | DecisionStoreRecoveryParseResult
+  | { readonly ok: false; readonly reason: string; readonly normalizedPath?: string };
+
+export async function recoverDecisionStoreFromFile(
+  path: string,
+): Promise<DecisionStoreRecoveryFileReaderResult> {
+  const pathPreflight = preflightDecisionStorePath(path);
+
+  if (!pathPreflight.ok) {
+    return { ok: false, reason: pathPreflight.reason };
+  }
+
+  try {
+    const content = await readFile(pathPreflight.normalizedPath, "utf8");
+    return recoverDecisionStoreFromJsonl(content);
+  } catch {
+    return {
+      ok: false,
+      reason: "file_read_failed",
+      normalizedPath: pathPreflight.normalizedPath,
+    };
+  }
 }
