@@ -16,6 +16,9 @@ npx blueprint build --all
 echo "[stage-b-full] TypeScript check"
 npx tsc --noEmit
 
+echo "[stage-b-full] Stage D-4 decision smoke aggregator"
+./scripts/stage-d4-full-smoke.sh
+
 echo "[stage-b-full] Stage B-2 ingestion smoke"
 npx ts-node scripts/stage-b2-ingestion-smoke.ts
 
