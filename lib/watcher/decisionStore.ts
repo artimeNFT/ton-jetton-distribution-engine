@@ -528,3 +528,87 @@ export function buildDecisionStoreAppendPlan(
     serializedLine: serialization.line,
   };
 }
+
+export type DecisionStoreRecoveryParseResult =
+  | {
+      readonly ok: true;
+      readonly records: readonly CandidateDecisionRecord[];
+      readonly index: DecisionStoreInMemoryIndex;
+      readonly recoveredRecordCount: number;
+    }
+  | {
+      readonly ok: false;
+      readonly reason: string;
+      readonly lineNumber?: number;
+      readonly decisionId?: string;
+      readonly candidateId?: string;
+      readonly decisionRunId?: string;
+    };
+
+function isBlankJsonlLine(line: string): boolean {
+  return line.trim().length === 0;
+}
+
+export function recoverDecisionStoreFromJsonl(
+  content: string,
+): DecisionStoreRecoveryParseResult {
+  const records: CandidateDecisionRecord[] = [];
+  const lines = content.split(/\r?\n/);
+
+  for (const [index, line] of lines.entries()) {
+    const lineNumber = index + 1;
+
+    if (isBlankJsonlLine(line)) {
+      continue;
+    }
+
+    const parsed = parseDecisionRecordJsonlLine(line);
+    if (!parsed.ok) {
+      return { ok: false, reason: parsed.reason, lineNumber };
+    }
+
+    const validation = validateDecisionStoreRecord(parsed.record);
+    if (!validation.ok) {
+      return {
+        ok: false,
+        reason: validation.reason,
+        lineNumber,
+        decisionId: parsed.record.decisionId,
+        candidateId: parsed.record.candidateId,
+        decisionRunId: parsed.record.decisionRunId,
+      };
+    }
+
+    records.push(parsed.record);
+
+    const partialIndexResult = buildDecisionStoreInMemoryIndex(records);
+    if (!partialIndexResult.ok) {
+      return {
+        ok: false,
+        reason: partialIndexResult.reason,
+        lineNumber,
+        decisionId: partialIndexResult.decisionId,
+        candidateId: partialIndexResult.candidateId,
+        decisionRunId: partialIndexResult.decisionRunId,
+      };
+    }
+  }
+
+  const indexResult = buildDecisionStoreInMemoryIndex(records);
+  if (!indexResult.ok) {
+    return {
+      ok: false,
+      reason: indexResult.reason,
+      decisionId: indexResult.decisionId,
+      candidateId: indexResult.candidateId,
+      decisionRunId: indexResult.decisionRunId,
+    };
+  }
+
+  return {
+    ok: true,
+    records,
+    index: indexResult.index,
+    recoveredRecordCount: records.length,
+  };
+}

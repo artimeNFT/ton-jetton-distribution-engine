@@ -28,4 +28,7 @@ npx ts-node scripts/stage-d8-9-decision-store-append-plan-smoke.ts
 echo "[stage-d8-full] D-8.10 append writer smoke"
 npx ts-node scripts/stage-d8-10-decision-store-append-writer-smoke.ts
 
+echo "[stage-d8-full] D-8.12 recovery parser smoke"
+npx ts-node scripts/stage-d8-12-decision-store-recovery-parser-smoke.ts
+
 echo "[stage-d8-full] PASS"
