@@ -40,4 +40,7 @@ npx ts-node scripts/stage-d8-14-decision-store-roundtrip-smoke.ts
 echo "[stage-d8-full] D-8.15 lock contract smoke"
 npx ts-node scripts/stage-d8-15-decision-store-lock-contract-smoke.ts
 
+echo "[stage-d8-full] D-8.16 lock file shell smoke"
+npx ts-node scripts/stage-d8-16-decision-store-lock-file-shell-smoke.ts
+
 echo "[stage-d8-full] PASS"
