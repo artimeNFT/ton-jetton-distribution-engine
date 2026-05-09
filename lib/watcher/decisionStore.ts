@@ -396,3 +396,45 @@ export function preflightDecisionStoreAppend(
     decisionRunId: incoming.decisionRunId,
   };
 }
+
+export type DecisionStorePathPreflightResult =
+  | { readonly ok: true; readonly normalizedPath: string }
+  | { readonly ok: false; readonly reason: string };
+
+const DECISION_STORE_PATH_PREFIX = "data/decision-store/";
+
+function containsShellMetacharacter(value: string): boolean {
+  return /[;&|`$<>(){}[\]*?!]/.test(value);
+}
+
+export function preflightDecisionStorePath(
+  path: string,
+): DecisionStorePathPreflightResult {
+  const normalizedPath = path.replaceAll("\\", "/").trim();
+
+  if (normalizedPath.length === 0) {
+    return { ok: false, reason: "empty_path" };
+  }
+
+  if (normalizedPath.startsWith("/") || /^[A-Za-z]:\//.test(normalizedPath)) {
+    return { ok: false, reason: "absolute_path_not_allowed" };
+  }
+
+  if (!normalizedPath.startsWith(DECISION_STORE_PATH_PREFIX)) {
+    return { ok: false, reason: "path_outside_decision_store_dir" };
+  }
+
+  if (normalizedPath.split("/").some((part) => part.length === 0)) {
+    return { ok: false, reason: "empty_path_segment" };
+  }
+
+  if (normalizedPath.split("/").includes("..")) {
+    return { ok: false, reason: "path_traversal_not_allowed" };
+  }
+
+  if (containsShellMetacharacter(normalizedPath)) {
+    return { ok: false, reason: "shell_metacharacter_not_allowed" };
+  }
+
+  return { ok: true, normalizedPath };
+}
