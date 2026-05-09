@@ -37,4 +37,7 @@ npx ts-node scripts/stage-d8-13-decision-store-recovery-file-reader-smoke.ts
 echo "[stage-d8-full] D-8.14 roundtrip smoke"
 npx ts-node scripts/stage-d8-14-decision-store-roundtrip-smoke.ts
 
+echo "[stage-d8-full] D-8.15 lock contract smoke"
+npx ts-node scripts/stage-d8-15-decision-store-lock-contract-smoke.ts
+
 echo "[stage-d8-full] PASS"
