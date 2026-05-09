@@ -19,6 +19,9 @@ npx tsc --noEmit
 echo "[stage-b-full] Stage D-4 decision smoke aggregator"
 ./scripts/stage-d4-full-smoke.sh
 
+echo "[stage-b-full] Stage D-8 decision store smoke aggregator"
+./scripts/stage-d8-full-smoke.sh
+
 echo "[stage-b-full] Stage B-2 ingestion smoke"
 npx ts-node scripts/stage-b2-ingestion-smoke.ts
 
