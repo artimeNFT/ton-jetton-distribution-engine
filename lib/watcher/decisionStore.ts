@@ -220,3 +220,89 @@ export function classifyDecisionStoreDuplicate(
 
   return { kind: "new_record" };
 }
+
+export interface DecisionStoreInMemoryIndex {
+  readonly byDecisionId: ReadonlyMap<string, CandidateDecisionRecord>;
+  readonly validRecordCount: number;
+  readonly identicalDuplicateCount: number;
+}
+
+export type DecisionStoreInMemoryIndexResult =
+  | { readonly ok: true; readonly index: DecisionStoreInMemoryIndex }
+  | {
+      readonly ok: false;
+      readonly reason: string;
+      readonly decisionId?: string;
+      readonly candidateId?: string;
+      readonly decisionRunId?: string;
+    };
+
+function findConflictingCandidateRunRecord(
+  records: readonly CandidateDecisionRecord[],
+  incoming: CandidateDecisionRecord,
+): CandidateDecisionRecord | null {
+  for (const existing of records) {
+    if (
+      existing.candidateId === incoming.candidateId &&
+      existing.decisionRunId === incoming.decisionRunId
+    ) {
+      return existing;
+    }
+  }
+
+  return null;
+}
+
+export function buildDecisionStoreInMemoryIndex(
+  records: readonly CandidateDecisionRecord[],
+): DecisionStoreInMemoryIndexResult {
+  const byDecisionId = new Map<string, CandidateDecisionRecord>();
+  const acceptedRecords: CandidateDecisionRecord[] = [];
+  let identicalDuplicateCount = 0;
+
+  for (const record of records) {
+    const validation = validateDecisionStoreRecord(record);
+    if (!validation.ok) {
+      return {
+        ok: false,
+        reason: validation.reason,
+        decisionId: record.decisionId,
+        candidateId: record.candidateId,
+        decisionRunId: record.decisionRunId,
+      };
+    }
+
+    const sameDecisionId = byDecisionId.get(record.decisionId) ?? null;
+    const sameCandidateRun = findConflictingCandidateRunRecord(acceptedRecords, record);
+    const existing = sameDecisionId ?? sameCandidateRun;
+
+    const classification = classifyDecisionStoreDuplicate(existing, record);
+
+    if (classification.kind === "conflicting_duplicate") {
+      return {
+        ok: false,
+        reason: classification.reason,
+        decisionId: record.decisionId,
+        candidateId: record.candidateId,
+        decisionRunId: record.decisionRunId,
+      };
+    }
+
+    if (classification.kind === "identical_duplicate") {
+      identicalDuplicateCount += 1;
+      continue;
+    }
+
+    byDecisionId.set(record.decisionId, record);
+    acceptedRecords.push(record);
+  }
+
+  return {
+    ok: true,
+    index: {
+      byDecisionId,
+      validRecordCount: byDecisionId.size,
+      identicalDuplicateCount,
+    },
+  };
+}
