@@ -46,4 +46,7 @@ npx ts-node scripts/stage-d8-16-decision-store-lock-file-shell-smoke.ts
 echo "[stage-d8-full] D-8.17 lock acquire/release shell smoke"
 npx ts-node scripts/stage-d8-17-decision-store-lock-acquire-release-shell-smoke.ts
 
+echo "[stage-d8-full] D-8.18 fault injection smoke"
+npx ts-node scripts/stage-d8-18-decision-store-lock-fault-injection-smoke.ts
+
 echo "[stage-d8-full] PASS"
