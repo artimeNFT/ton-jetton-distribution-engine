@@ -55,15 +55,15 @@ export type GasEstimateSnapshotValidationResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly reason: string };
 
-function isNonEmptyString(value: string): boolean {
-  return value.trim().length > 0;
+function isNonEmptyString(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
-function isDecimalString(value: string): boolean {
-  return /^(0|[1-9][0-9]*)$/.test(value);
+function isDecimalString(value: unknown): value is string {
+  return typeof value === "string" && /^(0|[1-9][0-9]*)$/.test(value);
 }
 
-function parseDecimalString(value: string): bigint | null {
+function parseDecimalString(value: unknown): bigint | null {
   if (!isDecimalString(value)) {
     return null;
   }
@@ -71,7 +71,11 @@ function parseDecimalString(value: string): bigint | null {
   return BigInt(value);
 }
 
-function parseIsoTimestampMs(value: string): number | null {
+function parseIsoTimestampMs(value: unknown): number | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
   const parsed = Date.parse(value);
 
   if (!Number.isFinite(parsed)) {
@@ -264,40 +268,46 @@ function validateChainContext(snapshot: GasEstimateSnapshot): GasEstimateSnapsho
 }
 
 export function validateGasEstimateSnapshot(
-  snapshot: GasEstimateSnapshot,
+  snapshot: unknown,
   decisionAt: string,
 ): GasEstimateSnapshotValidationResult {
-  const enumValidation = validateSupportedEnums(snapshot);
+  if (snapshot === null || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return { ok: false, reason: "gas_snapshot_not_object" };
+  }
+
+  const candidate = snapshot as GasEstimateSnapshot;
+
+  const enumValidation = validateSupportedEnums(candidate);
   if (!enumValidation.ok) {
     return enumValidation;
   }
 
-  const stringValidation = validateRequiredStrings(snapshot);
+  const stringValidation = validateRequiredStrings(candidate);
   if (!stringValidation.ok) {
     return stringValidation;
   }
 
-  const decimalValidation = validateDecimalFeeFields(snapshot);
+  const decimalValidation = validateDecimalFeeFields(candidate);
   if (!decimalValidation.ok) {
     return decimalValidation;
   }
 
-  const arithmeticValidation = validateFeeArithmetic(snapshot);
+  const arithmeticValidation = validateFeeArithmetic(candidate);
   if (!arithmeticValidation.ok) {
     return arithmeticValidation;
   }
 
-  const feeDecisionValidation = validateFeeDecision(snapshot);
+  const feeDecisionValidation = validateFeeDecision(candidate);
   if (!feeDecisionValidation.ok) {
     return feeDecisionValidation;
   }
 
-  const freshnessValidation = validateFreshness(snapshot, decisionAt);
+  const freshnessValidation = validateFreshness(candidate, decisionAt);
   if (!freshnessValidation.ok) {
     return freshnessValidation;
   }
 
-  const chainContextValidation = validateChainContext(snapshot);
+  const chainContextValidation = validateChainContext(candidate);
   if (!chainContextValidation.ok) {
     return chainContextValidation;
   }

@@ -108,6 +108,7 @@ function decisionRecordToValidationInput(
     finalitySnapshot: record.finalitySnapshot,
     rulesetSnapshot: record.rulesetSnapshot,
     blacklistSnapshot: record.blacklistSnapshot,
+    gasEstimateSnapshot: record.gasEstimateSnapshot,
     schemaVersion: record.schemaVersion,
   };
 }

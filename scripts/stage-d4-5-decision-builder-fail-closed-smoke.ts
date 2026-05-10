@@ -58,6 +58,27 @@ function sampleInput(): BuildCandidateDecisionRecordInput {
       matched: false,
       matchReason: null,
     },
+    gasEstimateSnapshot: {
+      gasEstimateSource: "offline_fixed",
+      gasEstimateMethod: "fixed-dry-run-v1",
+      gasEstimatorVersion: "gas-estimator-v1",
+      gasObservedAt: "2026-01-01T00:00:30.000Z",
+      gasMaxFreshnessMs: 60_000,
+      gasFreshnessDecision: "not_applicable_offline_fixed",
+      gasChain: null,
+      gasWorkchain: null,
+      gasChainSeqno: null,
+      gasChainConfigHash: null,
+      gasChainConfigParamVersion: null,
+      estimatedStorageFeeNanoTon: "10",
+      estimatedComputeFeeNanoTon: "20",
+      estimatedForwardFeeNanoTon: "30",
+      estimatedActionFeeNanoTon: "40",
+      estimatedTotalFeeNanoTon: "100",
+      feeAllowanceNanoTon: "150",
+      feePolicyVersion: "fee-policy-v1",
+      feeDecision: "within_fee_allowance",
+    },
   };
 }
 

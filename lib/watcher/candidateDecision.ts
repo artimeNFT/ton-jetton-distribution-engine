@@ -17,6 +17,7 @@
 
 import { createHash } from "crypto";
 import type { CandidateRecord } from "./ingestionTypes";
+import { validateGasEstimateSnapshot, type GasEstimateSnapshot } from "./gasSnapshot";
 
 export type CandidateDecisionState =
   | "pending"
@@ -95,6 +96,7 @@ export interface CandidateDecisionRecord {
   readonly finalitySnapshot: CandidateFinalitySnapshot;
   readonly rulesetSnapshot: CandidateRulesetSnapshot;
   readonly blacklistSnapshot: CandidateBlacklistSnapshot;
+  readonly gasEstimateSnapshot: GasEstimateSnapshot;
 }
 
 export interface CandidateDecisionTraceability {
@@ -152,6 +154,7 @@ export interface BuildCandidateDecisionRecordInput {
   readonly finalitySnapshot: CandidateFinalitySnapshot;
   readonly rulesetSnapshot: CandidateRulesetSnapshot;
   readonly blacklistSnapshot: CandidateBlacklistSnapshot;
+  readonly gasEstimateSnapshot: GasEstimateSnapshot;
   readonly schemaVersion: string;
 }
 
@@ -187,6 +190,7 @@ export function buildCandidateDecisionRecord(
     finalitySnapshot: input.finalitySnapshot,
     rulesetSnapshot: input.rulesetSnapshot,
     blacklistSnapshot: input.blacklistSnapshot,
+    gasEstimateSnapshot: input.gasEstimateSnapshot,
   };
 }
 
@@ -213,7 +217,8 @@ export type CandidateDecisionValidationReason =
   | "invalid_finality_depth"
   | "missing_finality_decision"
   | "missing_ruleset_version"
-  | "missing_blacklist_version";
+  | "missing_blacklist_version"
+  | "invalid_gas_estimate_snapshot";
 
 export interface CandidateDecisionValidationIssue {
   readonly reason: CandidateDecisionValidationReason;
@@ -360,6 +365,16 @@ export function validateBuildCandidateDecisionRecordInput(
 
   if (!isNonEmpty(input.blacklistSnapshot.blacklistVersion)) {
     pushIssue(issues, "missing_blacklist_version", "blacklistSnapshot.blacklistVersion", "required");
+  }
+
+  const gasValidation = validateGasEstimateSnapshot(input.gasEstimateSnapshot, input.decisionAt);
+  if (!gasValidation.ok) {
+    pushIssue(
+      issues,
+      "invalid_gas_estimate_snapshot",
+      "gasEstimateSnapshot",
+      gasValidation.reason,
+    );
   }
 
   if (!isNonEmpty(input.decidedBy)) {
