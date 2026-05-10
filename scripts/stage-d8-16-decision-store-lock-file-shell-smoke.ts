@@ -146,7 +146,7 @@ async function testMissingFileReadFailsTyped(): Promise<void> {
 
     assert.equal(result.ok, false);
     if (!result.ok) {
-      assert.equal(result.reason, "lock_file_read_failed");
+      assert.equal(result.reason, "lock_file_missing");
       assert.equal(result.normalizedPath, LOCK_PATH);
     }
   });

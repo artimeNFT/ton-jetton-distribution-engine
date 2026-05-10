@@ -13,6 +13,8 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { preflightDecisionStorePath } from "./decisionStore";
 import {
+  decideDecisionStoreLockAcquire,
+  decideDecisionStoreLockRelease,
   validateDecisionStoreLockRecord,
   type DecisionStoreLockRecord,
 } from "./decisionStoreLock";
@@ -40,6 +42,10 @@ export type DecisionStoreLockFileWriteResult =
       readonly reason: string;
       readonly normalizedPath?: string;
     };
+
+function isErrnoException(error: unknown): error is { readonly code?: string } {
+  return typeof error === "object" && error !== null && "code" in error;
+}
 
 function serializeDecisionStoreLockRecord(record: DecisionStoreLockRecord): string {
   return `${JSON.stringify(record)}\n`;
@@ -94,10 +100,12 @@ export async function readDecisionStoreLockFile(
       normalizedPath: pathPreflight.normalizedPath,
       lock: parsed.lock,
     };
-  } catch {
+  } catch (error) {
     return {
       ok: false,
-      reason: "lock_file_read_failed",
+      reason: isErrnoException(error) && error.code === "ENOENT"
+        ? "lock_file_missing"
+        : "lock_file_read_failed",
       normalizedPath: pathPreflight.normalizedPath,
     };
   }
@@ -142,4 +150,151 @@ export async function writeDecisionStoreLockFile(
       normalizedPath,
     };
   }
+}
+
+export type DecisionStoreLockFileAcquireResult =
+  | {
+      readonly ok: true;
+      readonly action: "acquired";
+      readonly normalizedPath: string;
+      readonly lock: DecisionStoreLockRecord;
+    }
+  | {
+      readonly ok: false;
+      readonly action: "active_lock";
+      readonly normalizedPath: string;
+      readonly existingLock: DecisionStoreLockRecord;
+      readonly requestedOwnerId: string;
+    }
+  | {
+      readonly ok: false;
+      readonly action: "acquire_failed";
+      readonly reason: string;
+      readonly normalizedPath?: string;
+    };
+
+export async function acquireDecisionStoreLockFileShell(
+  path: string,
+  requestedLock: DecisionStoreLockRecord,
+  nowMs: number,
+): Promise<DecisionStoreLockFileAcquireResult> {
+  const existingRead = await readDecisionStoreLockFile(path);
+
+  if (!existingRead.ok && existingRead.reason !== "lock_file_missing") {
+    return {
+      ok: false,
+      action: "acquire_failed",
+      reason: existingRead.reason,
+      normalizedPath: existingRead.normalizedPath,
+    };
+  }
+
+  const acquireDecision = decideDecisionStoreLockAcquire(
+    existingRead.ok ? existingRead.lock : null,
+    requestedLock.ownerId,
+    nowMs,
+  );
+
+  if (acquireDecision.action === "active_lock") {
+    return {
+      ok: false,
+      action: "active_lock",
+      normalizedPath: existingRead.ok ? existingRead.normalizedPath : path,
+      existingLock: acquireDecision.existingLock,
+      requestedOwnerId: acquireDecision.requestedOwnerId,
+    };
+  }
+
+  if (!acquireDecision.ok) {
+    return {
+      ok: false,
+      action: "acquire_failed",
+      reason: acquireDecision.reason,
+      normalizedPath: existingRead.ok ? existingRead.normalizedPath : undefined,
+    };
+  }
+
+  const writeResult = await writeDecisionStoreLockFile(path, requestedLock);
+  if (!writeResult.ok) {
+    return {
+      ok: false,
+      action: "acquire_failed",
+      reason: writeResult.reason,
+      normalizedPath: writeResult.normalizedPath,
+    };
+  }
+
+  return {
+    ok: true,
+    action: "acquired",
+    normalizedPath: writeResult.normalizedPath,
+    lock: requestedLock,
+  };
+}
+
+export type DecisionStoreLockFileReleaseResult =
+  | {
+      readonly ok: true;
+      readonly action: "release_allowed";
+      readonly normalizedPath: string;
+      readonly lockId: string;
+      readonly ownerId: string;
+    }
+  | {
+      readonly ok: false;
+      readonly action: "release_owner_mismatch";
+      readonly normalizedPath: string;
+      readonly existingLock: DecisionStoreLockRecord;
+      readonly requestedOwnerId: string;
+    }
+  | {
+      readonly ok: false;
+      readonly action: "release_failed";
+      readonly reason: string;
+      readonly normalizedPath?: string;
+    };
+
+export async function releaseDecisionStoreLockFileShell(
+  path: string,
+  requestedOwnerId: string,
+): Promise<DecisionStoreLockFileReleaseResult> {
+  const existingRead = await readDecisionStoreLockFile(path);
+
+  if (!existingRead.ok) {
+    return {
+      ok: false,
+      action: "release_failed",
+      reason: existingRead.reason,
+      normalizedPath: existingRead.normalizedPath,
+    };
+  }
+
+  const releaseDecision = decideDecisionStoreLockRelease(existingRead.lock, requestedOwnerId);
+
+  if (releaseDecision.action === "release_owner_mismatch") {
+    return {
+      ok: false,
+      action: "release_owner_mismatch",
+      normalizedPath: existingRead.normalizedPath,
+      existingLock: releaseDecision.existingLock,
+      requestedOwnerId: releaseDecision.requestedOwnerId,
+    };
+  }
+
+  if (!releaseDecision.ok) {
+    return {
+      ok: false,
+      action: "release_failed",
+      reason: releaseDecision.reason,
+      normalizedPath: existingRead.normalizedPath,
+    };
+  }
+
+  return {
+    ok: true,
+    action: "release_allowed",
+    normalizedPath: existingRead.normalizedPath,
+    lockId: releaseDecision.lockId,
+    ownerId: releaseDecision.ownerId,
+  };
 }

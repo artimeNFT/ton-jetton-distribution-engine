@@ -43,4 +43,7 @@ npx ts-node scripts/stage-d8-15-decision-store-lock-contract-smoke.ts
 echo "[stage-d8-full] D-8.16 lock file shell smoke"
 npx ts-node scripts/stage-d8-16-decision-store-lock-file-shell-smoke.ts
 
+echo "[stage-d8-full] D-8.17 lock acquire/release shell smoke"
+npx ts-node scripts/stage-d8-17-decision-store-lock-acquire-release-shell-smoke.ts
+
 echo "[stage-d8-full] PASS"
