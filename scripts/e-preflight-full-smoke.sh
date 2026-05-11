@@ -19,4 +19,7 @@ npx ts-node scripts/e-preflight-4-signed-envelope-contract-smoke.ts
 echo "[e-preflight-full] E-Preflight.5 envelope signature verification smoke"
 npx ts-node scripts/e-preflight-5-envelope-signature-verification-smoke.ts
 
+echo "[e-preflight-full] E-Preflight.6 envelope freshness policy smoke"
+npx ts-node scripts/e-preflight-6-envelope-freshness-policy-smoke.ts
+
 echo "[e-preflight-full] PASS"
