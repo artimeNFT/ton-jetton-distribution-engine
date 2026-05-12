@@ -28,6 +28,9 @@ echo "[stage-b-full] Stage D-9 gas snapshot smoke aggregator"
 echo "[stage-b-full] E-Preflight smoke aggregator"
 ./scripts/e-preflight-full-smoke.sh
 
+echo "[stage-b-full] Stage E integration boundary smoke aggregator"
+./scripts/stage-e-full-smoke.sh
+
 echo "[stage-b-full] Stage B-2 ingestion smoke"
 npx ts-node scripts/stage-b2-ingestion-smoke.ts
 
