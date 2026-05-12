@@ -48,4 +48,7 @@ npx ts-node scripts/e-preflight-6-envelope-freshness-policy-smoke.ts
 echo "[e-preflight-full] E-Preflight.7 replay nonce contract smoke"
 npx ts-node scripts/e-preflight-7-replay-nonce-contract-smoke.ts
 
+echo "[e-preflight-full] E-Preflight.Orchestrator preflight aggregation smoke"
+npx ts-node scripts/e-preflight-orchestrator-smoke.ts
+
 echo "[e-preflight-full] PASS"
