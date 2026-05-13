@@ -13,4 +13,7 @@ npx ts-node scripts/f-2-runstate-plan-apply-contract-smoke.ts
 echo "[stage-f-full] F-3 RunState apply file shell smoke"
 npx ts-node scripts/f-3-runstate-apply-file-shell-smoke.ts
 
+echo "[stage-f-full] F-4 Dispatcher dry-run intake boundary smoke"
+npx ts-node scripts/f-4-dispatcher-dry-run-intake-boundary-smoke.ts
+
 echo "[stage-f-full] PASS"
