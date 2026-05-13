@@ -10,4 +10,7 @@ npx ts-node scripts/e-1-decision-store-ownership-check-contract-smoke.ts
 echo "[stage-e-full] E-2 Append Writer lock enforcement smoke"
 npx ts-node scripts/e-2-decision-store-append-writer-lock-enforcement-smoke.ts
 
+echo "[stage-e-full] E-3 Atomic acquire contract smoke"
+npx ts-node scripts/e-3-decision-store-atomic-acquire-contract-smoke.ts
+
 echo "[stage-e-full] PASS"
