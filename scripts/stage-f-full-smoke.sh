@@ -7,4 +7,7 @@ npx tsc --noEmit
 echo "[stage-f-full] F-1 DecisionStore RunState adapter contract smoke"
 npx ts-node scripts/f-1-decisionstore-runstate-adapter-contract-smoke.ts
 
+echo "[stage-f-full] F-2 RunState plan apply contract smoke"
+npx ts-node scripts/f-2-runstate-plan-apply-contract-smoke.ts
+
 echo "[stage-f-full] PASS"

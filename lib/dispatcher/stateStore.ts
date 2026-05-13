@@ -411,9 +411,16 @@ function normalizeEntries(
 
     const e = rawEntry as unknown as Record<string, unknown>;
 
+    const rawStatus = VALID_STATE_STATUSES.has(String(e["status"]))
+      ? (e["status"] as StateStatus)
+      : "planned";
+
     const attemptRaw = Number(e["attemptNumber"]);
+    const minimumAttemptNumber = rawStatus === "planned" ? 0 : 1;
     const attemptNumber =
-      Number.isInteger(attemptRaw) && attemptRaw >= 1 ? attemptRaw : 1;
+      Number.isInteger(attemptRaw) && attemptRaw >= minimumAttemptNumber
+        ? attemptRaw
+        : minimumAttemptNumber;
 
     const recipientIndexRaw = Number(e["recipientIndex"]);
     const recipientIndex = Number.isFinite(recipientIndexRaw)
@@ -434,9 +441,7 @@ function normalizeEntries(
         typeof e["recipientAddress"] === "string" ? e["recipientAddress"] : "",
       recipientIndex,
       amount: typeof e["amount"] === "string" ? e["amount"] : "0",
-      status: VALID_STATE_STATUSES.has(String(e["status"]))
-        ? (e["status"] as StateStatus)
-        : "planned",
+      status: rawStatus,
       attemptNumber,
       operatorId: normStringOrNull(e["operatorId"]),
       operatorLabel: normStringOrNull(e["operatorLabel"]),
@@ -449,9 +454,12 @@ function normalizeEntries(
       cooldownUntil: normIsoOrNull(e["cooldownUntil"]),
       lastErrorCode: normStringOrNull(e["lastErrorCode"]),
       lastError: normStringOrNull(e["lastError"]),
-      lastDecision: VALID_RETRY_DISPOSITIONS.has(String(e["lastDecision"]))
-        ? (e["lastDecision"] as RetryDisposition)
-        : "none",
+      lastDecision:
+        e["lastDecision"] === null
+          ? null
+          : VALID_RETRY_DISPOSITIONS.has(String(e["lastDecision"]))
+          ? (e["lastDecision"] as RetryDisposition)
+          : "none",
     };
 
     if (metadata !== undefined) {
