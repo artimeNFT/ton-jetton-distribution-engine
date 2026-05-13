@@ -16,4 +16,7 @@ npx ts-node scripts/e-3-decision-store-atomic-acquire-contract-smoke.ts
 echo "[stage-e-full] E-4 Atomic acquire file shell smoke"
 npx ts-node scripts/e-4-decision-store-atomic-acquire-file-shell-smoke.ts
 
+echo "[stage-e-full] E-5 Lock fault injection / hijack resistance smoke"
+npx ts-node scripts/e-5-decision-store-lock-fault-injection-hijack-resistance-smoke.ts
+
 echo "[stage-e-full] PASS"
