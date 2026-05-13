@@ -19,4 +19,7 @@ npx ts-node scripts/e-4-decision-store-atomic-acquire-file-shell-smoke.ts
 echo "[stage-e-full] E-5 Lock fault injection / hijack resistance smoke"
 npx ts-node scripts/e-5-decision-store-lock-fault-injection-hijack-resistance-smoke.ts
 
+echo "[stage-e-full] E-6 DecisionStore / Heartbeat coexistence smoke"
+npx ts-node scripts/e-6-decision-store-heartbeat-coexistence-smoke.ts
+
 echo "[stage-e-full] PASS"
