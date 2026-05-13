@@ -13,4 +13,7 @@ npx ts-node scripts/e-2-decision-store-append-writer-lock-enforcement-smoke.ts
 echo "[stage-e-full] E-3 Atomic acquire contract smoke"
 npx ts-node scripts/e-3-decision-store-atomic-acquire-contract-smoke.ts
 
+echo "[stage-e-full] E-4 Atomic acquire file shell smoke"
+npx ts-node scripts/e-4-decision-store-atomic-acquire-file-shell-smoke.ts
+
 echo "[stage-e-full] PASS"
