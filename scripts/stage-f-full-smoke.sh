@@ -19,4 +19,7 @@ npx ts-node scripts/f-4-dispatcher-dry-run-intake-boundary-smoke.ts
 echo "[stage-f-full] F-5 Dispatcher dry-run transition plan smoke"
 npx ts-node scripts/f-5-dispatcher-dry-run-transition-plan-smoke.ts
 
+echo "[stage-f-full] F-6 Cross-store consistency contract smoke"
+npx ts-node scripts/f-6-cross-store-consistency-contract-smoke.ts
+
 echo "[stage-f-full] PASS"
