@@ -22,6 +22,9 @@ npx ts-node scripts/f-5-dispatcher-dry-run-transition-plan-smoke.ts
 echo "[stage-f-full] F-5 Retry policy disposition smoke"
 npx ts-node scripts/f-5-retry-policy-disposition-smoke.ts
 
+echo "[stage-f-full] F-5.2 Gas safety margin policy smoke"
+npx ts-node scripts/f-5-2-gas-safety-margin-policy-smoke.ts
+
 echo "[stage-f-full] F-5 Asset fee policy resolver smoke"
 npx ts-node scripts/f-5-asset-fee-policy-resolver-smoke.ts
 
