@@ -43,4 +43,7 @@ npx ts-node scripts/f-7a-dispatcher-fault-injection-smoke.ts
 echo "[stage-f-full] F-7B Operational health probe lane smoke"
 npx ts-node scripts/f-7-operational-health-probe-lane-smoke.ts
 
+echo "[stage-f-full] F-8 Administrative halt interception smoke"
+npx ts-node scripts/f-8-administrative-halt-interception-smoke.ts
+
 echo "[stage-f-full] PASS"
