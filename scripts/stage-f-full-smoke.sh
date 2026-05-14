@@ -25,4 +25,7 @@ npx ts-node scripts/f-6-cross-store-consistency-contract-smoke.ts
 echo "[stage-f-full] F-6 Heartbeat append policy smoke"
 npx ts-node scripts/f-6-heartbeat-append-policy-smoke.ts
 
+echo "[stage-f-full] F-6 Heartbeat policy writer integration smoke"
+npx ts-node scripts/f-6-heartbeat-policy-writer-integration-smoke.ts
+
 echo "[stage-f-full] PASS"
