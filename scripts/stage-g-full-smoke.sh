@@ -16,4 +16,7 @@ npx ts-node scripts/g-4-uncertain-submission-seqno-recovery-smoke.ts
 echo "[stage-g-full] G-5 Terminal audit reconciliation smoke"
 npx ts-node scripts/g-5-terminal-audit-reconciliation-smoke.ts
 
+echo "[stage-g-full] G-6 Metadata intent lineage smoke"
+npx ts-node scripts/g-6-metadata-intent-lineage-smoke.ts
+
 echo "[stage-g-full] PASS"
