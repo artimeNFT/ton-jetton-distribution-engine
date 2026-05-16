@@ -13,4 +13,7 @@ npx ts-node scripts/g-2-deterministic-execution-context-audit-smoke.ts
 echo "[stage-g-full] G-4 Uncertain submission and seqno recovery smoke"
 npx ts-node scripts/g-4-uncertain-submission-seqno-recovery-smoke.ts
 
+echo "[stage-g-full] G-5 Terminal audit reconciliation smoke"
+npx ts-node scripts/g-5-terminal-audit-reconciliation-smoke.ts
+
 echo "[stage-g-full] PASS"
