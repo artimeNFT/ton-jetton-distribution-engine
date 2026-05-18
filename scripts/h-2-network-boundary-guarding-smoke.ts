@@ -71,6 +71,33 @@ function evaluateNetworkBoundary(env: Env): BoundaryDecision {
     return reject("dry_run_proof_invalid");
   }
 
+  const expectedCommit = requireEnv(env, "EXPECTED_COMMIT");
+  const ciWorkflowName = requireEnv(env, "CI_WORKFLOW_NAME");
+  const ciStatus = requireEnv(env, "CI_STATUS");
+  const ciConclusion = requireEnv(env, "CI_CONCLUSION");
+  const ciCommit = requireEnv(env, "CI_COMMIT");
+
+  if (!expectedCommit) return reject("missing_expected_commit");
+  if (ciWorkflowName !== "Stage B Full Check") return reject("ci_workflow_invalid");
+  if (ciStatus !== "completed") return reject("ci_status_invalid");
+  if (ciConclusion !== "success") return reject("ci_conclusion_invalid");
+  if (ciCommit !== expectedCommit) return reject("ci_commit_mismatch");
+
+  const approvalId = requireEnv(env, "APPROVAL_ID");
+  const approvalNowRaw = requireEnv(env, "APPROVAL_NOW_MS");
+  const approvalExpiresRaw = requireEnv(env, "APPROVAL_EXPIRES_AT_MS");
+
+  if (!approvalId) return reject("missing_approval_id");
+  if (!approvalNowRaw) return reject("missing_approval_now");
+  if (!approvalExpiresRaw) return reject("missing_approval_expiry");
+
+  const approvalNowMs = Number(approvalNowRaw);
+  const approvalExpiresAtMs = Number(approvalExpiresRaw);
+
+  if (!Number.isSafeInteger(approvalNowMs)) return reject("approval_now_invalid");
+  if (!Number.isSafeInteger(approvalExpiresAtMs)) return reject("approval_expiry_invalid");
+  if (approvalExpiresAtMs <= approvalNowMs) return reject("approval_expired");
+
   return allow();
 }
 
@@ -83,6 +110,14 @@ const VALID_ENV: Env = {
   CAMPAIGN_ID: "campaign-h2",
   CONFIRM_CAMPAIGN_ID: "campaign-h2",
   DRY_RUN_PROOF: "stage-g-h1-locked",
+  EXPECTED_COMMIT: "commit-h2",
+  CI_WORKFLOW_NAME: "Stage B Full Check",
+  CI_STATUS: "completed",
+  CI_CONCLUSION: "success",
+  CI_COMMIT: "commit-h2",
+  APPROVAL_ID: "approval-h2",
+  APPROVAL_NOW_MS: "1000",
+  APPROVAL_EXPIRES_AT_MS: "2000",
 };
 
 function testAllowsOnlyAfterAllGatesPass(): void {
@@ -114,6 +149,17 @@ function testRejectsUnsafeBoundaryInputs(): void {
   assertRejected(withEnv({ OBSERVED_CHAIN_ID: "ton-mainnet" }), "chain_id_mismatch");
   assertRejected(withEnv({ CONFIRM_CAMPAIGN_ID: "wrong-campaign" }), "campaign_confirmation_mismatch");
   assertRejected(withEnv({ DRY_RUN_PROOF: "missing" }), "dry_run_proof_invalid");
+  assertRejected(withEnv({ EXPECTED_COMMIT: undefined }), "missing_expected_commit");
+  assertRejected(withEnv({ CI_WORKFLOW_NAME: "Other Workflow" }), "ci_workflow_invalid");
+  assertRejected(withEnv({ CI_STATUS: "in_progress" }), "ci_status_invalid");
+  assertRejected(withEnv({ CI_CONCLUSION: "failure" }), "ci_conclusion_invalid");
+  assertRejected(withEnv({ CI_COMMIT: "wrong-commit" }), "ci_commit_mismatch");
+  assertRejected(withEnv({ APPROVAL_ID: undefined }), "missing_approval_id");
+  assertRejected(withEnv({ APPROVAL_NOW_MS: undefined }), "missing_approval_now");
+  assertRejected(withEnv({ APPROVAL_EXPIRES_AT_MS: undefined }), "missing_approval_expiry");
+  assertRejected(withEnv({ APPROVAL_NOW_MS: "not-a-number" }), "approval_now_invalid");
+  assertRejected(withEnv({ APPROVAL_EXPIRES_AT_MS: "not-a-number" }), "approval_expiry_invalid");
+  assertRejected(withEnv({ APPROVAL_NOW_MS: "2000", APPROVAL_EXPIRES_AT_MS: "2000" }), "approval_expired");
 }
 
 function testRejectsMissingRequiredInputs(): void {
