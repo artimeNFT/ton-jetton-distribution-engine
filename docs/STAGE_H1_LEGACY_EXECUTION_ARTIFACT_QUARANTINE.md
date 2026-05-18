@@ -262,3 +262,20 @@ Decision:
 - do not treat it as a legacy live-send artifact
 - do not execute with DRY_RUN=false
 - require deterministic synthetic txHash review before future execution-capable stages
+
+## Package Script Remediation — deploy/mint fail-closed
+
+Classification: Remediated package-level command surface.
+
+Decision:
+
+- package.json deploy no longer invokes Blueprint or Testnet
+- package.json mint no longer invokes Blueprint or Testnet
+- both commands fail closed locally with STAGE_H_FAIL_CLOSED
+- future Stage I Testnet execution must use explicit gated Stage I commands, not legacy package aliases
+
+Negative gate evidence:
+
+- npm run deploy exits non-zero with STAGE_H_FAIL_CLOSED
+- npm run mint exits non-zero with STAGE_H_FAIL_CLOSED
+- no legacy Blueprint deploy/mint command is invoked by these package scripts

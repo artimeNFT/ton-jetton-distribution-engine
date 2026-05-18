@@ -5,8 +5,8 @@
   "scripts": {
     "build": "blueprint build",
     "start": "blueprint run",
-    "deploy": "blueprint run deploySecureTether --testnet",
-    "mint": "blueprint run deployAndMint --testnet"
+    "deploy": "node -e \"console.error('[STAGE_H_FAIL_CLOSED] npm run deploy is disabled during Stage H. Use explicit Stage I testnet gates only.'); process.exit(1)\"",
+    "mint": "node -e \"console.error('[STAGE_H_FAIL_CLOSED] npm run mint is disabled during Stage H. Use explicit Stage I testnet gates only.'); process.exit(1)\""
   },
   "dependencies": {
     "@ton/core": "^0.63.1",

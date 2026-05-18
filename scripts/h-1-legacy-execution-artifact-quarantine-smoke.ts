@@ -119,6 +119,28 @@ function testUpdateMetadataReviewedExceptionIsPresent(): void {
   assertIncludes(doc, "deterministic-audit concern");
 }
 
+function assertFailClosedPackageScript(name: "deploy" | "mint"): void {
+  const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  const command = pkg.scripts?.[name] ?? "";
+  assertIncludes(command, "STAGE_H_FAIL_CLOSED");
+  assertIncludes(command, "process.exit(1)");
+  assert.equal(command.includes("blueprint run"), false);
+  assert.equal(command.includes("--testnet"), false);
+  assert.equal(command.includes("deploySecureTether"), false);
+  assert.equal(command.includes("deployAndMint"), false);
+}
+
+function testPackageScriptRemediationIsPresent(): void {
+  const doc = readDoc();
+  assertIncludes(doc, "Package Script Remediation — deploy/mint fail-closed");
+  assertIncludes(doc, "Remediated package-level command surface");
+  assertIncludes(doc, "STAGE_H_FAIL_CLOSED");
+  assertFailClosedPackageScript("deploy");
+  assertFailClosedPackageScript("mint");
+}
+
 testClassificationModelIsPresent();
 testControlBoundaryIsPresent();
 testInitialFindingsArePresent();
@@ -130,5 +152,6 @@ testStageAggregatorReachabilityEvidenceIsPresent();
 testLocalSensitiveArtifactSurfaceIsPresent();
 testLegacySurfaceClassificationIsPresent();
 testUpdateMetadataReviewedExceptionIsPresent();
+testPackageScriptRemediationIsPresent();
 
 console.log(`${LABEL} PASS`);
