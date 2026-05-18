@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "blueprint build",
-    "start": "blueprint run",
+    "start": "node -e \"console.error('[STAGE_H_FAIL_CLOSED] npm run start is disabled during Stage H. Use explicit gated stage smokes only.'); process.exit(1)\"",
     "deploy": "node -e \"console.error('[STAGE_H_FAIL_CLOSED] npm run deploy is disabled during Stage H. Use explicit Stage I testnet gates only.'); process.exit(1)\"",
     "mint": "node -e \"console.error('[STAGE_H_FAIL_CLOSED] npm run mint is disabled during Stage H. Use explicit Stage I testnet gates only.'); process.exit(1)\""
   },

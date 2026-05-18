@@ -1,5 +1,5 @@
 import * as assert from "assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 const LABEL = "[h-2-network-boundary-guarding-smoke]";
 
@@ -205,10 +205,60 @@ function testNoForbiddenNetworkOrSignerImports(): void {
   }
 }
 
+function assertFailClosedPackageScript(name: "start" | "deploy" | "mint"): void {
+  const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  const command = pkg.scripts?.[name] ?? "";
+  assert.equal(command.includes("STAGE_H_FAIL_CLOSED"), true);
+  assert.equal(command.includes("process.exit(1)"), true);
+  assert.equal(command.includes("blueprint run"), false);
+  assert.equal(command.includes("--testnet"), false);
+  assert.equal(command.includes("deploySecureTether"), false);
+  assert.equal(command.includes("deployAndMint"), false);
+}
+
+function testPackageScriptsCannotBypassH2(): void {
+  assertFailClosedPackageScript("start");
+  assertFailClosedPackageScript("deploy");
+  assertFailClosedPackageScript("mint");
+}
+
+function listStageAggregators(): string[] {
+  return readdirSync("scripts")
+    .filter((name) => /^stage-.*-smoke\.sh$/.test(name))
+    .map((name) => `scripts/${name}`)
+    .sort();
+}
+
+function testStageAggregatorsCannotBypassH2(): void {
+  const aggregators = listStageAggregators();
+  assert.equal(aggregators.includes("scripts/stage-h-full-smoke.sh"), true);
+
+  const combined = aggregators
+    .map((path) => readFileSync(path, "utf8"))
+    .join("\n");
+
+  for (const forbidden of [
+    "deploySecureTether",
+    "deployAndMint",
+    "bulkMint",
+    "deployJettonMaster",
+    "vaultDistribution",
+    "batchStatusUpdate",
+    "legacy/deployAndMint",
+    "--testnet",
+  ]) {
+    assert.equal(combined.includes(forbidden), false, `stage aggregator bypass surface: ${forbidden}`);
+  }
+}
+
 testAllowsOnlyAfterAllGatesPass();
 testRejectsUnsafeBoundaryInputs();
 testRejectsMissingRequiredInputs();
 testPreSignerHardStopPreventsLoaderInvocation();
 testNoForbiddenNetworkOrSignerImports();
+testPackageScriptsCannotBypassH2();
+testStageAggregatorsCannotBypassH2();
 
 console.log(`${LABEL} PASS`);
