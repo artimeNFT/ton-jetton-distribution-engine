@@ -238,3 +238,27 @@ Decision:
 - do not delete them in this step
 - do not treat them as part of the approved Stage G dry-run path
 - require explicit remediation review before any Stage I/Testnet work
+
+## Artifact Classification — scripts/updateMetadata.ts
+
+Classification: Manually Reviewed Exception with deterministic-artifact caveat.
+
+Evidence:
+
+- execution-adjacent composition/root surface
+- uses DryRunExecutor synthetic broadcast only
+- DRY_RUN=false is blocked after the real-execution gate because no live MintExecutor exists
+- no signing, sending, or broadcasting is available in Phase 1
+- hands off to dispatcher.dispatch(campaignConfig)
+
+Caveat:
+
+- DryRunExecutor synthetic txHash currently includes Date.now(), which is not suitable for deterministic replay artifacts
+- this is not a network/broadcast risk, but it remains a deterministic-audit concern before any future live-capable path
+
+Decision:
+
+- keep as a reviewed exception candidate
+- do not treat it as a legacy live-send artifact
+- do not execute with DRY_RUN=false
+- require deterministic synthetic txHash review before future execution-capable stages

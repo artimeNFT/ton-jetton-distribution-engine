@@ -107,6 +107,18 @@ function testLegacySurfaceClassificationIsPresent(): void {
   assertIncludes(doc, "require explicit remediation review before any Stage I/Testnet work");
 }
 
+function testUpdateMetadataReviewedExceptionIsPresent(): void {
+  const doc = readDoc();
+  assertIncludes(doc, "Artifact Classification — scripts/updateMetadata.ts");
+  assertIncludes(doc, "Manually Reviewed Exception with deterministic-artifact caveat");
+  assertIncludes(doc, "uses DryRunExecutor synthetic broadcast only");
+  assertIncludes(doc, "no live MintExecutor exists");
+  assertIncludes(doc, "no signing, sending, or broadcasting is available in Phase 1");
+  assertIncludes(doc, "dispatcher.dispatch(campaignConfig)");
+  assertIncludes(doc, "Date.now()");
+  assertIncludes(doc, "deterministic-audit concern");
+}
+
 testClassificationModelIsPresent();
 testControlBoundaryIsPresent();
 testInitialFindingsArePresent();
@@ -117,5 +129,6 @@ testBatchStatusUpdateClassificationIsPresent();
 testStageAggregatorReachabilityEvidenceIsPresent();
 testLocalSensitiveArtifactSurfaceIsPresent();
 testLegacySurfaceClassificationIsPresent();
+testUpdateMetadataReviewedExceptionIsPresent();
 
 console.log(`${LABEL} PASS`);
