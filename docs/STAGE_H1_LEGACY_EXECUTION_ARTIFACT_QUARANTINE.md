@@ -70,3 +70,140 @@ H-1 cannot close until:
 This document is the H-1 manifest framework and initial inventory record.
 
 It does not quarantine, delete, move, execute, or modify any legacy artifact.
+
+## Reachability Evidence — Package Scripts
+
+`package.json` exposes two Testnet-facing operator commands:
+
+- `deploy`: `blueprint run deploySecureTether --testnet`
+- `mint`: `blueprint run deployAndMint --testnet`
+
+Current file search found:
+
+- no `deploySecureTether` script file
+- `deployAndMint.ts` only under `legacy/`
+
+Classification: stale package-level command surface requiring review.
+
+No execution was performed. No package script was removed or modified in this step.
+
+## Artifact Classification — scripts/bulkMint.ts
+
+Classification: Quarantined Artifact.
+
+Evidence:
+
+- contains live-capable primitives: TonClient, WalletContractV4, mnemonicToPrivateKey, secretKey, RPC endpoint/API-key handling, and provider.sender().send(...)
+- run(provider) calls assertLegacyScriptBlocked() before the legacy live-send flow
+- assertLegacyScriptBlocked() throws LEGACY_SCRIPT_BLOCKED and states the script is quarantined pending review before testnet/mainnet execution
+
+Decision:
+
+- keep the file for audit/review
+- do not execute it
+- do not delete it in this step
+- do not treat it as part of the approved Stage G dry-run path
+
+## Artifact Classification — deploy/vault legacy scripts
+
+Classification: Quarantined Artifact.
+
+Files:
+
+- scripts/deployJettonMaster.ts
+- scripts/vaultDistribution.ts
+- scripts/vaultDistribution_linkTest.ts
+
+Evidence:
+
+- contain Blueprint NetworkProvider entrypoints
+- use provider.open(...)
+- contain contract send(...) calls
+- contain testnet/deploy/mint/distribution semantics
+- run(provider) calls assertLegacyScriptBlocked() before the legacy live-send flow
+
+Decision:
+
+- keep the files for audit/review
+- do not execute them
+- do not delete them in this step
+- do not treat them as part of the approved Stage G dry-run path
+
+## Artifact Classification — scripts/batchStatusUpdate.ts
+
+Classification: Quarantined Artifact.
+
+Evidence:
+
+- contains Blueprint NetworkProvider usage
+- reads sender sequence/state through getSeqno() and provider.provider(...).getState()
+- contains master.send(...) live-capable path
+- uses provider.open(...)
+- run(provider) calls assertLegacyScriptBlocked() before the legacy live-send flow
+
+Decision:
+
+- keep the file for audit/review
+- do not execute it
+- do not delete it in this step
+- do not treat it as part of the approved Stage G dry-run path
+
+## Reachability Evidence — Stage Aggregators
+
+Current stage aggregator scan found no approved Stage F/G/H aggregator path invoking:
+
+- scripts/bulkMint.ts
+- scripts/deployJettonMaster.ts
+- scripts/vaultDistribution.ts
+- scripts/vaultDistribution_linkTest.ts
+- scripts/batchStatusUpdate.ts
+- legacy/deployAndMint.ts
+
+Observed approved or guarded aggregator references:
+
+- launchStageA is referenced by Stage B gate smokes
+- updateMetadata is referenced by the Stage B update-metadata gate smoke
+- stage-h-full invokes only the H-1 quarantine smoke
+
+Classification impact:
+
+- legacy live-capable artifacts remain Quarantined Artifacts, not deletion candidates
+- launchStageA remains the approved dry-run composition path
+- updateMetadata remains a Manually Reviewed Exception candidate
+
+## Local Sensitive Artifact Surface
+
+Local untracked or ignored-sensitive artifacts exist outside the tracked source tree.
+
+Observed names-only categories:
+
+- .env and .env backup files
+- root *.state.json RunState artifacts
+- reports/*.csv audit/report artifacts
+- .tmp directory
+
+Classification: Local Sensitive Artifact Surface requiring review.
+
+Decision:
+
+- do not read secret contents during H-1 inventory
+- do not delete blindly
+- do not commit local env/state/report artifacts
+- classify retention, archival, or cleanup policy in a later explicit remediation step
+
+## Local Sensitive Artifact Git Protection
+
+Git ignore protection was verified for local sensitive artifact classes:
+
+- .env
+- .env.* backups
+- root *.state.json RunState artifacts
+- reports/*.csv audit/report artifacts
+- .tmp local directory
+
+Classification impact:
+
+- local env/state/report/tmp artifacts are not tracked source artifacts
+- they must not be committed
+- they must not be read for content during H-1 inventory
+- they must not be deleted blindly
