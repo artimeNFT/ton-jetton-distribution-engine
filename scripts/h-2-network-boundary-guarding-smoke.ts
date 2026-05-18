@@ -253,6 +253,16 @@ function testStageAggregatorsCannotBypassH2(): void {
   }
 }
 
+function testH2ClosureDocumentIsPresent(): void {
+  const doc = readFileSync("docs/STAGE_H2_NETWORK_BOUNDARY_GUARDING_CLOSURE.md", "utf8");
+  assert.equal(doc.includes("Stage H-2 — Network Boundary & Execution Guarding Closure"), true);
+  assert.equal(doc.includes("H-2.1 — Network Boundary Guarding Smoke"), true);
+  assert.equal(doc.includes("H-2.2 — CI Proof and Approval Expiry Gate"), true);
+  assert.equal(doc.includes("H-2.3 — Alternate Script Bypass Scan"), true);
+  assert.equal(doc.includes("proxy/IP/OPSEC routing logic"), true);
+  assert.equal(doc.includes("GitHub Actions completed success on the same SHA"), true);
+}
+
 testAllowsOnlyAfterAllGatesPass();
 testRejectsUnsafeBoundaryInputs();
 testRejectsMissingRequiredInputs();
@@ -260,5 +270,6 @@ testPreSignerHardStopPreventsLoaderInvocation();
 testNoForbiddenNetworkOrSignerImports();
 testPackageScriptsCannotBypassH2();
 testStageAggregatorsCannotBypassH2();
+testH2ClosureDocumentIsPresent();
 
 console.log(`${LABEL} PASS`);
