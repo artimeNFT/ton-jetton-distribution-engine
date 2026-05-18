@@ -95,6 +95,18 @@ function testLocalSensitiveArtifactSurfaceIsPresent(): void {
   assertIncludes(doc, "they must not be deleted blindly");
 }
 
+function testLegacySurfaceClassificationIsPresent(): void {
+  const doc = readDoc();
+  assertIncludes(doc, "Artifact Classification — legacy/* and staggered broadcaster");
+  assertIncludes(doc, "legacy/deployAndMint.ts");
+  assertIncludes(doc, "legacy/privacyProtocol.ts");
+  assertIncludes(doc, "legacy/matchingEngine.ts");
+  assertIncludes(doc, "legacy/liquidityMonitor.ts");
+  assertIncludes(doc, "lib/staggered-broadcaster.js");
+  assertIncludes(doc, "Quarantined / Forbidden Live Path candidates requiring remediation review");
+  assertIncludes(doc, "require explicit remediation review before any Stage I/Testnet work");
+}
+
 testClassificationModelIsPresent();
 testControlBoundaryIsPresent();
 testInitialFindingsArePresent();
@@ -104,5 +116,6 @@ testDeployVaultClassificationIsPresent();
 testBatchStatusUpdateClassificationIsPresent();
 testStageAggregatorReachabilityEvidenceIsPresent();
 testLocalSensitiveArtifactSurfaceIsPresent();
+testLegacySurfaceClassificationIsPresent();
 
 console.log(`${LABEL} PASS`);

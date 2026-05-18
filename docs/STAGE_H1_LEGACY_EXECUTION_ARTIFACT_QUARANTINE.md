@@ -207,3 +207,34 @@ Classification impact:
 - they must not be committed
 - they must not be read for content during H-1 inventory
 - they must not be deleted blindly
+
+## Artifact Classification — legacy/* and staggered broadcaster
+
+Classification: Quarantined / Forbidden Live Path candidates requiring remediation review.
+
+Unblocked legacy live-capable artifacts:
+
+- legacy/deployAndMint.ts
+- legacy/privacyProtocol.ts
+- legacy/matchingEngine.ts
+
+Evidence:
+
+- legacy/deployAndMint.ts contains TonClient, hardcoded testnet endpoint/API-key handling, WALLET_MNEMONIC, mnemonicToPrivateKey, secretKey, deploy/mint flow, and no self-block was observed
+- legacy/privacyProtocol.ts contains TonClient, testnet endpoint, WALLET_MNEMONIC, mnemonicToPrivateKey, secretKey, metadata/content mutation semantics, and no self-block was observed
+- legacy/matchingEngine.ts contains provider.sender().send(...) and mutation/notification semantics, and no self-block was observed
+
+Live-read legacy artifact:
+
+- legacy/liquidityMonitor.ts: NetworkProvider/provider.open read surface; no send path observed in the scanned evidence
+
+Execution-adjacent helper:
+
+- lib/staggered-broadcaster.js: exposes staggeredBroadcast(tasks, handler, options), where handler is documented as sending one transaction
+
+Decision:
+
+- do not execute these files
+- do not delete them in this step
+- do not treat them as part of the approved Stage G dry-run path
+- require explicit remediation review before any Stage I/Testnet work
