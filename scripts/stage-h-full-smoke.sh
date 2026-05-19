@@ -10,4 +10,7 @@ npx ts-node scripts/h-1-legacy-execution-artifact-quarantine-smoke.ts
 echo "[stage-h-full] H-2 Network boundary guarding smoke"
 npx ts-node scripts/h-2-network-boundary-guarding-smoke.ts
 
+echo "[stage-h-full] H-X Historical integrity audit smoke"
+npx ts-node scripts/h-x-historical-integrity-audit-smoke.ts
+
 echo "[stage-h-full] PASS"
