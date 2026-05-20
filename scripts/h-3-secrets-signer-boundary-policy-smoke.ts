@@ -3,6 +3,7 @@ import { readFileSync, statSync } from "node:fs";
 
 const LABEL = "[h-3-secrets-signer-boundary-policy-smoke]";
 const POLICY_DOC = "docs/STAGE_H3_SECRETS_SIGNER_BOUNDARY_POLICY.md";
+const CLASSIFICATION_DOC = "docs/STAGE_H3_SECRET_MARKER_CLASSIFICATION.md";
 const MAX_FILE_BYTES = 1024 * 1024;
 
 type FileCategory =
@@ -181,8 +182,12 @@ function countBy<T extends string>(items: readonly T[]): Record<T, number> {
 }
 
 function assertPolicyDocIsTracked(files: readonly string[]): void {
-  if (!files.includes(POLICY_DOC)) {
-    throw new Error(`${LABEL} missing tracked policy doc: ${POLICY_DOC}`);
+  const requiredDocs = [POLICY_DOC, CLASSIFICATION_DOC];
+
+  for (const doc of requiredDocs) {
+    if (!files.includes(doc)) {
+      throw new Error(`${LABEL} missing tracked required doc: ${doc}`);
+    }
   }
 }
 
@@ -200,6 +205,21 @@ function assertIgnoredRuntimeDirsAreNotTracked(files: readonly string[]): void {
   }
 }
 
+
+function assertPotentialBlockingFindingsAreClassified(
+  potentialBlockingFiles: readonly string[]
+): void {
+  const classificationText = readFileSync(CLASSIFICATION_DOC, "utf8");
+  const missing = potentialBlockingFiles.filter(
+    (item) => !classificationText.includes(`### ${item}`)
+  );
+
+  if (missing.length > 0) {
+    throw new Error(
+      `${LABEL} unclassified potential blocking markers: ${missing.join(", ")}`
+    );
+  }
+}
 
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort();
@@ -236,14 +256,26 @@ function main(): void {
       .map((item) => `${item.file}::${item.marker}`)
   );
 
+  if (unknownTrackedFiles.length > 0) {
+    throw new Error(`${LABEL} unknown tracked files: ${unknownTrackedFiles.join(", ")}`);
+  }
+
+  if (unknownOccurrenceFiles.length > 0) {
+    throw new Error(
+      `${LABEL} unknown marker occurrences: ${unknownOccurrenceFiles.join(", ")}`
+    );
+  }
+
+  assertPotentialBlockingFindingsAreClassified(potentialBlockingFiles);
+
   console.log(`${LABEL} markerOccurrences=${occurrences.length}`);
   console.log(`${LABEL} occurrenceClasses=${JSON.stringify(occurrenceClassCounts)}`);
   console.log(`${LABEL} unknownTrackedFiles=${JSON.stringify(unknownTrackedFiles)}`);
   console.log(`${LABEL} potentialBlockingFiles=${JSON.stringify(potentialBlockingFiles)}`);
   console.log(`${LABEL} unknownOccurrenceFiles=${JSON.stringify(unknownOccurrenceFiles)}`);
 
-  console.log(`${LABEL} skeletonMode=true`);
-  console.log(`${LABEL} enforcementMode=false`);
+  console.log(`${LABEL} classificationBindingMode=true`);
+  console.log(`${LABEL} secretBlockingMode=false`);
   console.log(`${LABEL} PASS`);
 }
 
