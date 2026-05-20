@@ -16,4 +16,7 @@ npx ts-node scripts/h-x-historical-integrity-audit-smoke.ts
 echo "[stage-h-full] H-3 Secrets signer boundary smoke"
 npx ts-node scripts/h-3-secrets-signer-boundary-policy-smoke.ts
 
+echo "[stage-h-full] H-4 Recipient eligibility policy smoke"
+npx ts-node scripts/h-4-2-recipient-eligibility-policy-smoke.ts
+
 echo "[stage-h-full] PASS"
