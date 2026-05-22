@@ -19,4 +19,7 @@ npx ts-node scripts/h-3-secrets-signer-boundary-policy-smoke.ts
 echo "[stage-h-full] H-4 Recipient eligibility policy smoke"
 npx ts-node scripts/h-4-2-recipient-eligibility-policy-smoke.ts
 
+echo "[stage-h-full] H-4B Budget reserve policy smoke"
+npx ts-node scripts/h-4b-2-budget-reserve-policy-smoke.ts
+
 echo "[stage-h-full] PASS"
