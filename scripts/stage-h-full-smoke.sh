@@ -28,4 +28,10 @@ npx ts-node scripts/h-5-2-metadata-governance-smoke.ts
 echo "[stage-h-full] H-6 Metadata rollback smoke"
 npx ts-node scripts/h-6-2-metadata-rollback-smoke.ts
 
+echo "[stage-h-full] H-7 Compilation wrapper smoke"
+npx ts-node scripts/h-7-2-compilation-wrapper-smoke.ts
+
+echo "[stage-h-full] H-7 TEP serialization surface smoke"
+npx ts-node scripts/h-7-3-tep-serialization-surface-smoke.ts
+
 echo "[stage-h-full] PASS"
