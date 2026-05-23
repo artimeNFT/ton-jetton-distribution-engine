@@ -25,4 +25,7 @@ npx ts-node scripts/h-4b-2-budget-reserve-policy-smoke.ts
 echo "[stage-h-full] H-5 Metadata governance smoke"
 npx ts-node scripts/h-5-2-metadata-governance-smoke.ts
 
+echo "[stage-h-full] H-6 Metadata rollback smoke"
+npx ts-node scripts/h-6-2-metadata-rollback-smoke.ts
+
 echo "[stage-h-full] PASS"
