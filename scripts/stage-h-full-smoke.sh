@@ -22,4 +22,7 @@ npx ts-node scripts/h-4-2-recipient-eligibility-policy-smoke.ts
 echo "[stage-h-full] H-4B Budget reserve policy smoke"
 npx ts-node scripts/h-4b-2-budget-reserve-policy-smoke.ts
 
+echo "[stage-h-full] H-5 Metadata governance smoke"
+npx ts-node scripts/h-5-2-metadata-governance-smoke.ts
+
 echo "[stage-h-full] PASS"
