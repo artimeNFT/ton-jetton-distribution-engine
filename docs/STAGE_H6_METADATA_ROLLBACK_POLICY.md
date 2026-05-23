@@ -24,6 +24,8 @@ Rollback intent must include:
 - originalContentHash
 - rollbackTargetHash
 - lineageReferenceId
+- rollback target must resolve to the original approved lineage root only
+- rollback-to-rollback chaining forbidden
 - administrativeApprovalId
 - rollbackReasonCode
 - evidenceReferenceId
