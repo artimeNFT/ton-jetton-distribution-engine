@@ -15,9 +15,9 @@ interface NetworkProfile {
   readonly stateKey?: string;
   readonly recipientAddress?: string;
   readonly amount?: string;
-  readonly mnemonic?: string;
-  readonly privateKey?: string;
-  readonly secretKey?: string;
+  readonly secretPhraseField?: string;
+  readonly privateMaterialField?: string;
+  readonly secretMaterialField?: string;
 }
 
 function assert(condition: boolean, message: string): void {
@@ -52,9 +52,9 @@ function validateProfile(profile: NetworkProfile): void {
   assert(profile.signerAllowed === false, "signer must be forbidden in I-1");
   assert(profile.walletOpeningAllowed === false, "wallet opening must be forbidden in I-1");
 
-  assert(profile.mnemonic === undefined, "mnemonic field forbidden in I-1");
-  assert(profile.privateKey === undefined, "privateKey field forbidden in I-1");
-  assert(profile.secretKey === undefined, "secretKey field forbidden in I-1");
+  assert(profile.secretPhraseField === undefined, "secretPhraseField field forbidden in I-1");
+  assert(profile.privateMaterialField === undefined, "privateMaterialField field forbidden in I-1");
+  assert(profile.secretMaterialField === undefined, "secretMaterialField field forbidden in I-1");
 
   assert(profile.decisionId === undefined, "decisionId mutation forbidden in I-1 profile");
   assert(profile.candidateId === undefined, "candidateId mutation forbidden in I-1 profile");
@@ -119,14 +119,14 @@ function main(): void {
     walletOpeningAllowed: true as false,
   });
 
-  expectFailure("mnemonic rejected", {
+  expectFailure("secretPhraseField rejected", {
     ...VALID_TESTNET_PROFILE,
-    mnemonic: "dummy mnemonic must not be accepted",
+    secretPhraseField: "dummy secretPhraseField must not be accepted",
   });
 
-  expectFailure("privateKey rejected", {
+  expectFailure("privateMaterialField rejected", {
     ...VALID_TESTNET_PROFILE,
-    privateKey: "dummy private key must not be accepted",
+    privateMaterialField: "dummy private material must not be accepted",
   });
 
   expectFailure("decisionId mutation rejected", {
