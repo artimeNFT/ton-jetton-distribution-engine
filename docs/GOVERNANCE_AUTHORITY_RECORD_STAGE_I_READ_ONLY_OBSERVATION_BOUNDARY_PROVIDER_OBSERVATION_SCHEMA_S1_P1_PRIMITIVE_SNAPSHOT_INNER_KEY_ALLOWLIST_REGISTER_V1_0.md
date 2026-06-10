@@ -1,0 +1,247 @@
+# Governance Authority Record v1.0
+## For Stage I Read-Only Observation Boundary
+## Provider-Observation-Schema S1.P1
+## Primitive-Snapshot Inner-Key Allowlist Register
+### Docs/Control Adoption Artifact Boundary Record
+
+```text
+recordPath:
+docs/GOVERNANCE_AUTHORITY_RECORD_STAGE_I_READ_ONLY_OBSERVATION_BOUNDARY_PROVIDER_OBSERVATION_SCHEMA_S1_P1_PRIMITIVE_SNAPSHOT_INNER_KEY_ALLOWLIST_REGISTER_V1_0.md
+
+recordVersion:
+1.0
+```
+
+## 1. Record Lifecycle Status
+
+```text
+DOCS-ONLY GOVERNANCE AUTHORITY RECORD
+DECLARATIVE
+NON-SELF-EXECUTING
+NON-ROUTABLE
+CAPABILITY-NEUTRAL
+
+RECORD CREATION DOES NOT ESTABLISH EFFECTIVENESS
+```
+
+## 2. Record Purpose
+
+This record preserves the owner-approved docs/control adoption-package boundary
+for the S1.P1 primitive-snapshot inner-key allowlist register when materialized
+under a separate explicit authorization.
+
+It does not open runtime capability.
+
+## 3. Approval Scope
+
+```text
+APPROVAL SCOPE:
+DOCS-ONLY DOCUMENTATION / CONTROL ADOPTION PACKAGE ONLY
+
+AFFECTED SURFACE:
+EXACTLY TWO NEW VERSIONED DOCS-ONLY FILES
+```
+
+## 4. Affected Artifacts
+
+```text
+SOURCE CANDIDATE:
+docs/STAGE_I_READ_ONLY_OBSERVATION_BOUNDARY_PROVIDER_OBSERVATION_SCHEMA_S1_P1_PRIMITIVE_SNAPSHOT_INNER_KEY_ALLOWLIST_REGISTER_CANDIDATE_V0_1.md
+
+DOCS/CONTROL ADOPTION ARTIFACT:
+docs/STAGE_I_READ_ONLY_OBSERVATION_BOUNDARY_PROVIDER_OBSERVATION_SCHEMA_S1_P1_PRIMITIVE_SNAPSHOT_INNER_KEY_ALLOWLIST_REGISTER_V1_0.md
+
+GOVERNANCE AUTHORITY RECORD:
+docs/GOVERNANCE_AUTHORITY_RECORD_STAGE_I_READ_ONLY_OBSERVATION_BOUNDARY_PROVIDER_OBSERVATION_SCHEMA_S1_P1_PRIMITIVE_SNAPSHOT_INNER_KEY_ALLOWLIST_REGISTER_V1_0.md
+```
+
+## 5. Preserved Baselines
+
+```text
+capabilityReferenceBaseline:
+I-6.B
+1410abb45c3eda85d4bde02b416553799470951f
+LOCKED
+
+preCandidateDocumentationControlHead:
+6dfffbebb7571452e276c1fab9a1959ebddcd984
+
+candidateMaterializationCommit:
+a0358b95778737d262f68a23ad1485c04e1a50d3
+```
+
+## 6. Exact Source-Candidate Record
+
+```text
+sourceCandidateArtifact:
+docs/STAGE_I_READ_ONLY_OBSERVATION_BOUNDARY_PROVIDER_OBSERVATION_SCHEMA_S1_P1_PRIMITIVE_SNAPSHOT_INNER_KEY_ALLOWLIST_REGISTER_CANDIDATE_V0_1.md
+
+sourceCandidateCommit:
+a0358b95778737d262f68a23ad1485c04e1a50d3
+
+sourceCandidateBlobSha256:
+7750aed827f0afd29b9f194c2ae2f652fb6674d2d96d6c2191fd040e79947293
+
+sourceCandidateCiEvidenceClassification:
+OWNER_OBSERVED_GREEN_CHECK
+EXACT_WORKFLOW_RUN_IDENTIFIER_AND_SAME_SHA_CORROBORATION_REQUIRED_BEFORE_EFFECTIVENESS
+```
+
+## 7. Exact Docs/Control Adoption Effect
+
+```text
+ADOPT AS DOCS/CONTROL ARTIFACT ONLY:
+THE EXACT PRESERVED S1.P1
+PRIMITIVE-SNAPSHOT INNER-KEY ALLOWLIST-REGISTER
+STRUCTURAL PAYLOAD
+
+FOR:
+DOWNSTREAM PLANNING
+STATIC VALIDATION
+AUDIT TRACEABILITY
+```
+
+```text
+INCLUDED:
+TOP-LEVEL FIELD IDENTITIES AND ORDER
+C01-C12 CATEGORY ROWS AND ORDER
+ORDERED ALLOWLISTS
+TYPE MAPS
+PRIMITIVE TYPES
+VALUE CONSTRAINTS
+OPTIONALITY RULES
+SENTINEL ELIGIBILITY
+COERCION RULES
+MISMATCH RULES
+FIXED ROW RULES
+forbiddenUses
+lineageRequirement
+checksumRequirement
+NARROW ZERO-INNER-KEY CLARIFICATION FOR C09 / C10 / C12 ONLY
+```
+
+## 8. Source-Snapshot Interpretation and Precedence Rule
+
+```text
+PRESERVED CANDIDATE LITERALS:
+LINEAGE-ONLY SOURCE-SNAPSHOT METADATA
+
+THEY MUST NOT BE INTERPRETED AS:
+V1_0 ARTIFACT LIFECYCLE STATUS
+```
+
+```text
+V1_0 WRAPPER LIFECYCLE
+AND EXPLICIT ADOPTION EFFECT:
+GOVERN V1_0 LIFECYCLE
+
+PRESERVED CANDIDATE SOURCE SNAPSHOT:
+GOVERNS EXACT STRUCTURAL PAYLOAD LINEAGE ONLY
+```
+
+## 9. Candidate-Preservation Rule
+
+```text
+SOURCE CANDIDATE:
+PRESERVE IMMUTABLY
+
+NO EDIT
+NO OVERWRITE
+NO RENAME
+NO DELETE
+```
+
+## 10. C03 Open-Caveat Carry-Forward
+
+```text
+C03:
+MESSAGE_PHASE_EVIDENCE
+
+CAVEAT-H-8:
+REMAINS OPEN
+
+TREATMENT:
+SEPARATE STAGE-H AUDIT TRACK
+```
+
+```text
+THIS RECORD DOES NOT:
+CLOSE
+DOWNGRADE
+HIDE
+RESOLVE
+CAVEAT-H-8
+```
+
+## 11. Explicit Non-Effects
+
+```text
+NO category activation
+NO Profile-member resolution
+NO Compatibility Profile adoption
+NO Activation Manifest drafting
+NO Activation Manifest selection
+NO S2 opening
+NO S3 opening
+NO provider initialization
+NO endpoint selection
+NO credential use
+NO RPC
+NO network access
+NO runtime discovery
+NO wallet opening
+NO seqno reads
+NO signer access
+NO signed payload generation
+NO broadcast
+NO Testnet
+NO Mainnet
+NO DRY_RUN=false
+NO capability exposure
+```
+
+## 12. Required Validation Evidence
+
+```text
+REQUIRED BEFORE EXTERNAL EFFECTIVENESS RECORDING:
+EXACT TWO-FILE SURFACE VALIDATION
+DOCS-ONLY ISOLATION REVIEW
+FORBIDDEN-CHANGE REVIEW
+CLEAN LOCAL MAIN VALIDATION
+PUSH TO origin/main
+LOCAL HEAD == origin/main
+EXACT WORKFLOW-RUN IDENTIFIER
+SAME-SHA CI SUCCESS
+CLOSURE EVIDENCE SUMMARY
+```
+
+## 13. External Closure-Evidence Rule
+
+```text
+FUTURE ADOPTION-PACKAGE COMMIT SHA
+EXACT WORKFLOW-RUN IDENTIFIER
+CI RESULT
+SAME-SHA CONFIRMATION
+CLOSURE EVIDENCE SUMMARY
+
+MUST BE RECORDED EXTERNALLY
+ONLY AFTER THEY EXIST
+
+MUST NOT BE EMBEDDED AS PLACEHOLDERS
+INSIDE THIS RECORD
+```
+
+## 14. Explicit Non-Authorization and Stop Boundary
+
+```text
+THIS RECORD DOES NOT AUTHORIZE:
+additional repository action
+automatic successor drafting
+automatic successor materialization
+schema runtime activation
+Profile adoption
+Manifest drafting
+S2 opening
+S3 opening
+capability opening
+```

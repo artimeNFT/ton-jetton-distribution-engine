@@ -1,0 +1,1021 @@
+# Stage I Read-Only Observation Boundary
+## Provider-Observation-Schema S1.P1
+## Primitive-Snapshot Inner-Key Allowlist Register
+### Documentation / Control Adoption Artifact v1.0
+
+```text
+adoptedArtifactPath:
+docs/STAGE_I_READ_ONLY_OBSERVATION_BOUNDARY_PROVIDER_OBSERVATION_SCHEMA_S1_P1_PRIMITIVE_SNAPSHOT_INNER_KEY_ALLOWLIST_REGISTER_V1_0.md
+
+adoptedDocumentationControlRegisterArtifactVersion:
+1.0
+```
+
+## 1. Artifact Lifecycle Status
+
+```text
+DOCS-ONLY DOCUMENTATION / CONTROL ADOPTION ARTIFACT
+DECLARATIVE
+NON-SELF-EXECUTING
+NON-ROUTABLE
+CAPABILITY-NEUTRAL
+
+CREATION DOES NOT ESTABLISH EFFECTIVENESS
+
+EFFECTIVENESS MUST BE RECORDED EXTERNALLY ONLY AFTER:
+EXACT FILE-SURFACE VALIDATION
+DOCS-ONLY ISOLATION REVIEW
+FORBIDDEN-CHANGE REVIEW
+CLEAN LOCAL MAIN VALIDATION
+PUSH TO origin/main
+LOCAL HEAD == origin/main
+EXACT WORKFLOW-RUN IDENTIFIER
+SAME-SHA CI SUCCESS
+CLOSURE EVIDENCE SUMMARY
+```
+
+## 2. Purpose and Exact Docs/Control Adoption Effect
+
+This artifact adopts the exact preserved S1.P1 primitive-snapshot inner-key
+allowlist-register candidate structural proposal as a versioned docs-only
+documentation/control register artifact for downstream planning, static
+validation and audit traceability only.
+
+```text
+ADOPTION EFFECT:
+DOCS-ONLY DOCUMENTATION / CONTROL REGISTER ARTIFACT ONLY
+
+NOT:
+RUNTIME ACTIVATION
+CATEGORY ACTIVATION
+PROFILE-MEMBER SELECTION
+CAPABILITY OPENING
+```
+
+## 3. Parent Adopted Stage Specification Binding
+
+```text
+parentStageSpecificationId:
+docs/STAGE_I_READ_ONLY_OBSERVATION_BOUNDARY_STAGE_SPECIFICATION_V1_0.md
+
+parentStageSpecificationBinding:
+BOUND_TO_ADOPTED_STAGE_SPECIFICATION
+
+bindingEffect:
+THIS ARTIFACT IS SUBORDINATE TO THE
+ADOPTED STAGE SPECIFICATION V1.0
+
+THIS ARTIFACT MUST NOT:
+WEAKEN
+OVERRIDE
+BYPASS
+SUMMARIZE AWAY
+OR SILENTLY WIDEN
+ANY PARENT SPECIFICATION CONTROL
+```
+
+## 4. Exact Immutable Source-Candidate Record
+
+```text
+sourceCandidateArtifact:
+docs/STAGE_I_READ_ONLY_OBSERVATION_BOUNDARY_PROVIDER_OBSERVATION_SCHEMA_S1_P1_PRIMITIVE_SNAPSHOT_INNER_KEY_ALLOWLIST_REGISTER_CANDIDATE_V0_1.md
+
+sourceCandidateCommit:
+a0358b95778737d262f68a23ad1485c04e1a50d3
+
+sourceCandidateBlobSha256:
+7750aed827f0afd29b9f194c2ae2f652fb6674d2d96d6c2191fd040e79947293
+
+sourceCandidateCiEvidenceClassification:
+OWNER_OBSERVED_GREEN_CHECK
+EXACT_WORKFLOW_RUN_IDENTIFIER_AND_SAME_SHA_CORROBORATION_REQUIRED_BEFORE_EFFECTIVENESS
+```
+
+```text
+SOURCE CANDIDATE PRESERVATION:
+NO EDIT
+NO OVERWRITE
+NO RENAME
+NO DELETE
+```
+
+## 5. Source-Snapshot Interpretation and Precedence Rules
+
+```text
+sourceSnapshotInterpretationRule:
+PRESERVED CANDIDATE LITERALS REMAIN
+LINEAGE-ONLY SOURCE-SNAPSHOT METADATA
+
+THEY MUST NOT BE INTERPRETED AS
+THE LIFECYCLE STATUS OF THIS V1_0 ARTIFACT
+```
+
+```text
+precedenceRule:
+THIS V1_0 WRAPPER LIFECYCLE
+AND THE EXPLICIT ADOPTION-EFFECT SECTION
+GOVERN THIS V1_0 ARTIFACT LIFECYCLE
+
+THE PRESERVED CANDIDATE SOURCE SNAPSHOT
+GOVERNS EXACT STRUCTURAL PAYLOAD LINEAGE ONLY
+```
+
+## 6. Normative Adoption Payload Scope
+
+```text
+normativeAdoptionPayloadScope:
+TOP-LEVEL FIELD IDENTITIES AND ORDER
+C01-C12 CATEGORY ROWS AND ORDER
+ORDERED ALLOWLISTS
+TYPE MAPS
+PRIMITIVE TYPES
+VALUE CONSTRAINTS
+OPTIONALITY RULES
+SENTINEL ELIGIBILITY
+COERCION RULES
+MISMATCH RULES
+FIXED ROW RULES
+forbiddenUses
+lineageRequirement
+checksumRequirement
+NARROW ZERO-INNER-KEY CLARIFICATION FOR C09 / C10 / C12 ONLY
+```
+
+```text
+EXCLUDED FROM LIFECYCLE PROMOTION:
+CANDIDATE WRAPPER LIFECYCLE TEXT
+CANDIDATE PATH
+CANDIDATE FUTURE-PROGRESSION WORDING
+EMBEDDED PROPOSAL-VERSION LITERAL
+EMBEDDED HELD-STATUS LITERALS
+```
+
+## 7. Preserved Candidate Structural Source Snapshot
+
+```text
+sourceSectionIdentity:
+CANDIDATE :: ## 6. Exact Consolidated Register Body
+
+sourceSnapshotRole:
+BYTE-IDENTICAL STRUCTURAL PAYLOAD LINEAGE ONLY
+```
+
+```text
+primitiveSnapshotInnerKeyAllowlistRegisterLabel:
+ABSTRACT_PRIMITIVE_SNAPSHOT_INNER_KEY_ALLOWLIST_REGISTER
+
+
+primitiveSnapshotInnerKeyAllowlistRegisterVersion:
+0.1.0-proposal
+
+
+providerObservationSchemaVersionBinding:
+ABSTRACT_PRIMITIVE_ONLY_READ_ONLY_OBSERVATION_EVIDENCE_SCHEMA
+::
+0.1.0-proposal
+
+
+schemaCategoryCoverageDeclarationBinding:
+S0
+::
+EXACT_12_CATEGORY_SCHEMA_COVERAGE_DECLARATION
+::
+REVIEW-PASSED_HELD_NOT_ADOPTED_NOT_EFFECTIVE
+
+
+categoryPartitionDeclarationBinding:
+S1.P0
+::
+ABSTRACT_OBSERVATION_CATEGORY_PARTITION_DECLARATION
+::
+REVIEW-PASSED_HELD_NOT_MATERIALIZED_NOT_ADOPTED_NOT_EFFECTIVE
+
+
+categoryEntrySet:
+
+
+1.
+observationCategory:
+CHAIN_REFERENCE_CONTEXT
+
+orderedInnerKeyAllowlist:
+
+1. lt
+2. txHash
+3. traceId
+4. actionIndex
+
+orderedInnerKeyTypeMap:
+
+1.
+innerKeyName:
+lt
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+CANONICAL_NON_NEGATIVE_DECIMAL_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+2.
+innerKeyName:
+txHash
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+NON_EMPTY_UTF8_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+3.
+innerKeyName:
+traceId
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+NON_EMPTY_UTF8_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+4.
+innerKeyName:
+actionIndex
+exactPrimitiveType:
+JSON_INTEGER
+valueConstraintRule:
+NON_NEGATIVE_INTEGER
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+2.
+observationCategory:
+TRANSACTION_OUTCOME_EVIDENCE
+
+orderedInnerKeyAllowlist:
+
+1. actionSuccessIndication
+
+orderedInnerKeyTypeMap:
+
+1.
+innerKeyName:
+actionSuccessIndication
+exactPrimitiveType:
+JSON_BOOLEAN
+valueConstraintRule:
+EXACT_BOOLEAN
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+3.
+observationCategory:
+MESSAGE_PHASE_EVIDENCE
+
+orderedInnerKeyAllowlist:
+
+1. auxiliaryMessageReference
+
+orderedInnerKeyTypeMap:
+
+1.
+innerKeyName:
+auxiliaryMessageReference
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+NON_EMPTY_UTF8_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+4.
+observationCategory:
+WALLET_CONTRACT_PROFILE_EVIDENCE
+
+orderedInnerKeyAllowlist:
+
+1. deployedContractCodeHashReference
+
+orderedInnerKeyTypeMap:
+
+1.
+innerKeyName:
+deployedContractCodeHashReference
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+NON_EMPTY_UTF8_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+5.
+observationCategory:
+JETTON_MASTER_IDENTITY_EVIDENCE
+
+orderedInnerKeyAllowlist:
+
+1. jettonMasterIdentityReference
+
+orderedInnerKeyTypeMap:
+
+1.
+innerKeyName:
+jettonMasterIdentityReference
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+NON_EMPTY_UTF8_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+6.
+observationCategory:
+JETTON_WALLET_IDENTITY_EVIDENCE
+
+orderedInnerKeyAllowlist:
+
+1. jettonWalletSchemaReference
+
+orderedInnerKeyTypeMap:
+
+1.
+innerKeyName:
+jettonWalletSchemaReference
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+NON_EMPTY_UTF8_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+7.
+observationCategory:
+BALANCE_OBSERVATION_EVIDENCE
+
+orderedInnerKeyAllowlist:
+
+1. observedBalanceSubjectReference
+2. observedBalanceAssetReference
+3. observedBalanceAtomicAmount
+
+orderedInnerKeyTypeMap:
+
+1.
+innerKeyName:
+observedBalanceSubjectReference
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+NON_EMPTY_UTF8_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+2.
+innerKeyName:
+observedBalanceAssetReference
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+NON_EMPTY_UTF8_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+3.
+innerKeyName:
+observedBalanceAtomicAmount
+exactPrimitiveType:
+UTF8_STRING
+valueConstraintRule:
+CANONICAL_NON_NEGATIVE_DECIMAL_STRING
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+8.
+observationCategory:
+PROVIDER_SCHEMA_EVIDENCE
+
+orderedInnerKeyAllowlist:
+
+1. providerObservationSchemaConformityIndication
+
+orderedInnerKeyTypeMap:
+
+1.
+innerKeyName:
+providerObservationSchemaConformityIndication
+exactPrimitiveType:
+JSON_BOOLEAN
+valueConstraintRule:
+EXACT_BOOLEAN
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+9.
+observationCategory:
+OBSERVATION_CONFLICT_EVIDENCE
+
+orderedInnerKeyAllowlist:
+EMPTY_ORDERED_SET
+
+orderedInnerKeyTypeMap:
+EMPTY_ORDERED_MAP
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+10.
+observationCategory:
+MATURITY_EVIDENCE
+
+orderedInnerKeyAllowlist:
+EMPTY_ORDERED_SET
+
+orderedInnerKeyTypeMap:
+EMPTY_ORDERED_MAP
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+11.
+observationCategory:
+PROFILE_MATCH_EVIDENCE
+
+orderedInnerKeyAllowlist:
+
+1. compatibilityProfileMatchIndication
+
+orderedInnerKeyTypeMap:
+
+1.
+innerKeyName:
+compatibilityProfileMatchIndication
+exactPrimitiveType:
+JSON_BOOLEAN
+valueConstraintRule:
+EXACT_BOOLEAN
+optionalityRule:
+REQUIRED_PRESENT
+sentinelEligibility:
+NOT_ELIGIBLE
+coercionRule:
+NO_COERCION_FAIL_CLOSED
+mismatchRule:
+FAIL_CLOSED_ON_TYPE_OR_VALUE_CONSTRAINT_MISMATCH
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+12.
+observationCategory:
+PROTOCOL_TIMEOUT_FIELD_EVIDENCE
+
+orderedInnerKeyAllowlist:
+EMPTY_ORDERED_SET
+
+orderedInnerKeyTypeMap:
+EMPTY_ORDERED_MAP
+
+additionalKeyRule:
+NO_ADDITIONAL_KEY_FAIL_CLOSED
+
+omissionRule:
+NO_SILENT_OMISSION_CONDITIONALLY_INAPPLICABLE_REQUIRES_AUTHORIZED_SENTINEL_FAIL_CLOSED
+
+duplicationRule:
+NO_DUPLICATE_KEY_FAIL_CLOSED
+
+reorderRule:
+EXACT_ORDER_REQUIRED_FAIL_CLOSED
+
+primitiveLeafOnlyRule:
+PRIMITIVE_LEAF_ONLY_NO_OBJECT_NO_ARRAY_FAIL_CLOSED
+
+runtimeDiscoveryRule:
+RUNTIME_DISCOVERY_FORBIDDEN_FAIL_CLOSED
+
+
+forbiddenUses:
+NO_EXECUTION_AUTHORITY
+NO_STATE_MUTATION_AUTHORITY
+NO_TRANSITION_AUTHORITY
+NO_RETRY_AUTHORITY
+NO_REASSIGNMENT_AUTHORITY
+NO_QUEUE_PROMOTION_OR_RELEASE_AUTHORITY
+NO_QUARANTINE_MUTATION_AUTHORITY
+NO_TERMINAL_MUTATION_AUTHORITY
+NO_GLOBAL_HALT_MUTATION_AUTHORITY
+NO_BALANCE_ADMISSION_AUTHORITY
+NO_PROVIDER_SELECTION
+NO_ENDPOINT_SELECTION
+NO_CREDENTIAL_USE
+NO_RPC
+NO_NETWORK_ACCESS
+NO_RUNTIME_DISCOVERY
+NO_DYNAMIC_ACCEPT_ALL
+NO_WALLET_OPENING
+NO_SEQNO_READ
+NO_SIGNER_ACCESS
+NO_BROADCAST
+NO_TESTNET
+NO_MAINNET
+NO_DRY_RUN_FALSE
+
+
+lineageRequirement:
+APPEND_ONLY_WHERE_APPLICABLE
+REPLACEMENT_VERSIONED_FOR_REGENERATED_EXPORTS
+CHECKSUM_BOUND
+SOURCE_STATE_BOUND_WHERE_APPLICABLE
+AUDIT_VISIBLE
+NO_SILENT_OVERWRITE
+NO_SILENT_TRUNCATION
+NO_HIDDEN_MUTATION
+NO_UNVERSIONED_REPLACEMENT
+NO_LINEAGE_LOSS
+
+
+checksumRequirement:
+TAMPER_EVIDENCE_AND_LINEAGE_ONLY
+CHECKSUM_MUST_REMAIN_SEPARATE_FROM_FUNCTIONAL_IDENTITY
+CHECKSUM_MUST_NOT_CREATE_EXECUTION_AUTHORITY
+CHECKSUM_MUST_NOT_CREATE_TRANSITION_AUTHORITY
+CHECKSUM_MUST_NOT_CREATE_RETRY_AUTHORITY
+CHECKSUM_MUST_NOT_CREATE_REASSIGNMENT_AUTHORITY
+CHECKSUM_MUST_NOT_CREATE_SIGNER_AUTHORITY
+CHECKSUM_MUST_NOT_CREATE_BROADCAST_AUTHORITY
+GENERAL_CHECKSUM_ALGORITHM_SELECTION_REMAINS_DEFERRED_TO_S3
+```
+
+## 8. Preserved Candidate Zero-Inner-Key Appendix Source Snapshot
+
+```text
+sourceSectionIdentity:
+CANDIDATE :: ## 7. Non-Schema Held Appendix
+CANDIDATE :: ### Zero-Inner-Key Structural Clarification
+
+sourceSnapshotRole:
+LINEAGE-ONLY SOURCE-SNAPSHOT METADATA
+```
+
+```text
+APPENDIX STATUS:
+NON-SCHEMA
+HELD CLARIFICATION ONLY
+NOT A TOP-LEVEL REGISTER FIELD
+NOT ADOPTED
+NOT EFFECTIVE
+```
+
+```text
+C09:
+OBSERVATION_CONFLICT_EVIDENCE
+
+C10:
+MATURITY_EVIDENCE
+
+C12:
+PROTOCOL_TIMEOUT_FIELD_EVIDENCE
+```
+
+```text
+orderedInnerKeyAllowlist:
+EMPTY_ORDERED_SET
+
+orderedInnerKeyTypeMap:
+EMPTY_ORDERED_MAP
+
+primitiveSnapshot:
+{}
+
+canonicalUtf8Serialization:
+{}
+
+exactUtf8BytesHex:
+7b7d
+
+primitiveSnapshotChecksumAlgorithm:
+SHA-256
+
+checksumEncoding:
+LOWERCASE_HEXADECIMAL
+NO PREFIX
+
+primitiveSnapshotChecksum:
+44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+```
+
+```text
+NOT RECOVERED FROM INPUT A
+
+NOT GENERAL SERIALIZATION-CONTRACT ADOPTION
+
+NOT GENERAL CHECKSUM-POLICY ADOPTION
+
+NOT PROFILE-MEMBER ADOPTION
+
+NOT EFFECTIVE
+```
+
+## 9. Narrow Zero-Inner-Key Docs/Control Clarification Adoption Effect
+
+```text
+ADOPT AS DOCS/CONTROL CLARIFICATION ONLY:
+
+C09:
+OBSERVATION_CONFLICT_EVIDENCE
+
+C10:
+MATURITY_EVIDENCE
+
+C12:
+PROTOCOL_TIMEOUT_FIELD_EVIDENCE
+```
+
+```text
+orderedInnerKeyAllowlist:
+EMPTY_ORDERED_SET
+
+orderedInnerKeyTypeMap:
+EMPTY_ORDERED_MAP
+```
+
+```text
+NO GENERAL SERIALIZATION-CONTRACT ADOPTION
+NO GENERAL CHECKSUM-POLICY ADOPTION
+NO PROFILE-MEMBER ADOPTION
+```
+
+## 10. C03 Open-Caveat Preservation
+
+```text
+C03:
+MESSAGE_PHASE_EVIDENCE
+
+CAVEAT-H-8:
+REMAINS OPEN
+
+TREATMENT:
+OPEN CAVEAT
+SEPARATE STAGE-H AUDIT TRACK
+```
+
+```text
+THIS ARTIFACT DOES NOT:
+CLOSE
+DOWNGRADE
+HIDE
+RESOLVE
+CAVEAT-H-8
+```
+
+## 11. Strict Non-Effects
+
+Nothing in this artifact authorizes:
+
+```text
+category activation
+Profile-member resolution
+Compatibility Profile adoption
+Activation Manifest drafting
+Activation Manifest selection
+S2 opening
+S3 opening
+provider initialization
+provider selection
+vendor selection
+endpoint selection
+credential use
+RPC
+network access
+runtime discovery
+source-code inspection
+wallet opening
+seqno reads
+signer access
+signed payload generation
+broadcast
+Testnet
+Mainnet
+DRY_RUN=false
+capability exposure
+```
+
+## 12. Required Validation Evidence Before External Effectiveness Recording
+
+```text
+REQUIRED:
+EXACT TWO-FILE SURFACE VALIDATION
+DOCS-ONLY ISOLATION REVIEW
+FORBIDDEN-CHANGE REVIEW
+CLEAN LOCAL MAIN VALIDATION
+PUSH TO origin/main
+LOCAL HEAD == origin/main
+EXACT WORKFLOW-RUN IDENTIFIER
+SAME-SHA CI SUCCESS
+CLOSURE EVIDENCE SUMMARY
+```
+
+## 13. External Closure-Evidence Rule
+
+```text
+THIS FILE DOES NOT SELF-DECLARE EFFECTIVENESS
+
+FUTURE ADOPTION-PACKAGE COMMIT SHA
+EXACT WORKFLOW-RUN IDENTIFIER
+CI RESULT
+SAME-SHA CONFIRMATION
+CLOSURE EVIDENCE SUMMARY
+
+MUST BE RECORDED EXTERNALLY
+ONLY AFTER THEY EXIST
+```
+
+## 14. Automatic Progression Prohibition
+
+```text
+THIS ARTIFACT DOES NOT AUTHORIZE:
+Governance Authority Record bypass
+successor artifact materialization
+Profile adoption
+Manifest drafting
+S2 opening
+S3 opening
+capability opening
+```
