@@ -25,8 +25,9 @@ import {
   type StateEntry,
   type StateStatus,
   loadState,
-  saveStateAtomic,
-  upsertEntry,
+  makeStateKey,
+  JsonAtomicStateStore,
+  setEntryGuarded,
 } from "./stateStore";
 
 // ─── Zombie Detection Constants ───────────────────────────────────────────────
@@ -80,6 +81,10 @@ export type AuditOutcome =
 export interface AuditLogEntry {
   batchId: string;
   recipientAddress: string;
+  /** Exact submitted-attempt identity carried by the terminal evidence. */
+  attemptNumber: number;
+  /** Exact operator identity carried by the terminal evidence. */
+  operatorId: string;
   outcome: AuditOutcome;
   /** ISO 8601 timestamp of when the outcome was recorded. */
   recordedAt: string;
@@ -107,8 +112,10 @@ export interface Reconciler {
   /**
    * Performs a full Integrity Check for the given campaign:
    *   - Loads current run state.
-   *   - Identifies zombie in-flight batches (no terminal audit entry, timed out).
-   *   - Safely resets zombie entries to "planned" for re-processing.
+   *   - Identifies unresolved submitted entries.
+   *   - Applies only evidence-bound terminal recovery through the guarded
+   *     atomic state path.
+   *   - Holds on timed-out uncertainty; elapsed time never authorizes replan.
    *
    * @param input.campaignId - Campaign to reconcile.
    * @param input.now        - Optional epoch ms override (useful in tests).
@@ -221,63 +228,104 @@ class DefaultReconciler implements Reconciler {
       );
     }
 
-    // Build a fast-lookup set: "<batchId>:<recipientAddress>" → true
-    const resolvedKeys = buildResolvedKeySet(terminalEntries);
+    const terminalByKey = buildTerminalEntryMap(terminalEntries);
+    const store = new JsonAtomicStateStore(statePath, campaignId);
+    let recoveredCount = 0;
 
-    // ── 3. Detect zombie entries ──────────────────────────────────────────
-    const zombieKeys = detectZombies(state, resolvedKeys, now, this.zombieTimeoutMs);
+    for (const [key, entry] of Object.entries(state.entries)) {
+      if (entry.status !== "submitted") continue;
 
-    if (zombieKeys.length === 0) {
-      this.logger.info("[Reconciler] Integrity Check complete — no zombies detected", {
-        campaignId,
-        totalEntries: Object.keys(state.entries).length,
-      });
-      return;
+      if (entry.submittedAt === null || entry.operatorId === null) {
+        throw new ReconcilerError(
+          `[Reconciler] Submitted entry "${key}" lacks exact submitted-attempt identity.`,
+          "UNCERTAIN_SUBMISSION"
+        );
+      }
+
+      const submittedAtMs = Date.parse(entry.submittedAt);
+      if (Number.isNaN(submittedAtMs)) {
+        throw new ReconcilerError(
+          `[Reconciler] Submitted entry "${key}" has an invalid timestamp and cannot be recovered by inference.`,
+          "UNCERTAIN_SUBMISSION"
+        );
+      }
+
+      const evidence = terminalByKey.get(key);
+      if (evidence === undefined) {
+        if (now - submittedAtMs > this.zombieTimeoutMs) {
+          throw new ReconcilerError(
+            `[Reconciler] Submitted entry "${key}" exceeded the recovery timeout without terminal evidence. ` +
+              `Elapsed time does not authorize a transition back to planned.`,
+            "UNCERTAIN_SUBMISSION"
+          );
+        }
+        continue;
+      }
+
+      const evidenceRecordedAtMs = Date.parse(evidence.recordedAt);
+      if (
+        evidence.batchId !== entry.batchId ||
+        normalizeRecipientAddress(evidence.recipientAddress) !==
+          normalizeRecipientAddress(entry.recipientAddress) ||
+        evidence.attemptNumber !== entry.attemptNumber ||
+        evidence.operatorId !== entry.operatorId
+      ) {
+        throw new ReconcilerError(
+          `[Reconciler] Terminal evidence for "${key}" does not match the current submitted attempt.`,
+          "UNCERTAIN_SUBMISSION"
+        );
+      }
+      if (Number.isNaN(evidenceRecordedAtMs) || evidenceRecordedAtMs < submittedAtMs) {
+        throw new ReconcilerError(
+          `[Reconciler] Terminal evidence for "${key}" has an invalid or pre-submission recordedAt value.`,
+          "UNCERTAIN_SUBMISSION"
+        );
+      }
+
+      const recoveredStatus = auditOutcomeToStateStatus(evidence.outcome);
+      const recoveryTimestamp = new Date(now).toISOString();
+
+      try {
+        await store.update((draft: RunState) => {
+          const current = draft.entries[key];
+          if (current === undefined) {
+            throw new Error(`[Reconciler] Recovery target "${key}" disappeared.`);
+          }
+          const recovered: StateEntry = {
+            ...current,
+            status: recoveredStatus,
+            updatedAt: recoveryTimestamp,
+            finalizedAt: recoveryTimestamp,
+            txHash: evidence.txHash ?? current.txHash,
+            lastErrorCode: recoveredStatus === "success" ? null : "recovered_from_terminal_audit",
+            lastError: recoveredStatus === "success" ? null : evidence.detail ?? null,
+            lastDecision: recoveredStatus === "success" ? "none" : "fail_batch",
+          };
+          setEntryGuarded(
+            draft,
+            key,
+            {
+              allowedStatuses: ["submitted"],
+              expectedAttemptNumber: entry.attemptNumber,
+              expectedOperatorId: entry.operatorId,
+            },
+            recovered
+          );
+          draft.meta.lastReconciledAt = recoveryTimestamp;
+        });
+      } catch (err: unknown) {
+        throw new ReconcilerError(
+          `[Reconciler] Evidence-bound recovery failed for "${key}". Cause: ${errorMessage(err)}`,
+          "STATE_SAVE_FAILURE"
+        );
+      }
+      recoveredCount++;
     }
 
-    this.logger.warn("[Reconciler] Zombie batches detected — initiating Safe Recovery", {
+    this.logger.info("[Reconciler] Integrity Check complete", {
       campaignId,
-      zombieCount: zombieKeys.length,
-      zombieKeys,
-    });
-
-    // ── 4. Safe Recovery: reset zombies to "planned" ──────────────────────
-    let recovered = state;
-    const recoveryTimestamp = new Date(now).toISOString();
-
-    for (const key of zombieKeys) {
-      const existing = recovered.entries[key];
-      if (existing === undefined) continue; // should never happen, but guard
-
-      const reset: StateEntry = {
-        ...existing,
-        status: "planned" as StateStatus,
-        updatedAt: recoveryTimestamp,
-      };
-
-      recovered = upsertEntry(recovered, key, reset);
-
-      this.logger.info("[Reconciler] Safe Recovery: entry reset to planned", {
-        campaignId,
-        key,
-        previousUpdatedAt: existing.updatedAt,
-      });
-    }
-
-    // ── 5. Persist recovered state atomically ─────────────────────────────
-    try {
-      await saveStateAtomic(statePath, recovered);
-    } catch (err: unknown) {
-      throw new ReconcilerError(
-        `[Reconciler] Safe Recovery failed during atomic state save for campaign "${campaignId}". ` +
-          `Cause: ${errorMessage(err)}`,
-        "STATE_SAVE_FAILURE"
-      );
-    }
-
-    this.logger.info("[Reconciler] Safe Recovery complete", {
-      campaignId,
-      zombiesRecovered: zombieKeys.length,
+      totalEntries: Object.keys(state.entries).length,
+      evidenceBoundRecoveries: recoveredCount,
     });
   }
 
@@ -398,6 +446,7 @@ export type ReconcilerErrorCode =
   | "METADATA_FIELD_MISSING"
   | "METADATA_FIELD_TYPE_INVALID"
   | "FORCE_REFRESH_TOKEN_MISSING"
+  | "UNCERTAIN_SUBMISSION"
   | "CONFIG_INVALID";
 
 export class ReconcilerError extends Error {
@@ -419,50 +468,102 @@ export class ReconcilerError extends Error {
  * Key format: `<batchId>:<recipientAddress>` — mirrors the state key prefix
  * used by makeStateKey so we can match without re-parsing state key components.
  */
-function buildResolvedKeySet(entries: AuditLogEntry[]): Set<string> {
-  const resolved = new Set<string>();
-  for (const entry of entries) {
-    resolved.add(`${entry.batchId}:${entry.recipientAddress}`);
+function buildTerminalEntryMap(entries: AuditLogEntry[]): Map<string, AuditLogEntry> {
+  const resolved = new Map<string, AuditLogEntry>();
+  for (const [index, entry] of entries.entries()) {
+    assertValidAuditLogEntry(entry, index);
+    const key = makeStateKey(entry.batchId, entry.recipientAddress);
+    const existing = resolved.get(key);
+    if (existing !== undefined && JSON.stringify(existing) !== JSON.stringify(entry)) {
+      throw new ReconcilerError(
+        `[Reconciler] Conflicting terminal audit evidence for "${key}".`,
+        "AUDIT_READ_FAILURE"
+      );
+    }
+    resolved.set(key, entry);
   }
   return resolved;
 }
 
-/**
- * Scans all state entries and returns keys that are:
- *   1. Currently in "submitted" status (the in-flight marker), AND
- *   2. Have no corresponding terminal audit entry, AND
- *   3. Have been in that state for longer than `zombieTimeoutMs`.
- */
-function detectZombies(
-  state: RunState,
-  resolvedKeys: Set<string>,
-  now: number,
-  zombieTimeoutMs: number
-): string[] {
-  const zombies: string[] = [];
-
-  for (const [key, entry] of Object.entries(state.entries)) {
-    if (entry.status !== "submitted") continue;
-
-    // Has a terminal audit record — not a zombie.
-    const auditKey = `${entry.batchId}:${entry.recipientAddress}`;
-    if (resolvedKeys.has(auditKey)) continue;
-
-    // Only declare zombie after the safety timeout has elapsed.
-    const updatedAtMs = Date.parse(entry.updatedAt);
-    if (isNaN(updatedAtMs)) {
-      // Unparseable timestamp: treat as ancient — safe to recover.
-      zombies.push(key);
-      continue;
-    }
-
-    const ageMs = now - updatedAtMs;
-    if (ageMs > zombieTimeoutMs) {
-      zombies.push(key);
-    }
+function assertValidAuditLogEntry(entry: AuditLogEntry, index: number): void {
+  const source = `terminal audit entry ${index}`;
+  if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+    throw new ReconcilerError(
+      `[Reconciler] ${source} must be an object.`,
+      "AUDIT_READ_FAILURE"
+    );
   }
+  const raw = entry as unknown as Record<string, unknown>;
+  if (typeof raw["batchId"] !== "string" || raw["batchId"].trim() === "") {
+    throw new ReconcilerError(`[Reconciler] ${source} lacks batchId.`, "AUDIT_READ_FAILURE");
+  }
+  if (
+    typeof raw["recipientAddress"] !== "string" ||
+    raw["recipientAddress"].trim() === ""
+  ) {
+    throw new ReconcilerError(
+      `[Reconciler] ${source} lacks recipientAddress.`,
+      "AUDIT_READ_FAILURE"
+    );
+  }
+  if (
+    !Number.isInteger(raw["attemptNumber"]) ||
+    (raw["attemptNumber"] as number) < 1
+  ) {
+    throw new ReconcilerError(
+      `[Reconciler] ${source} lacks a valid attemptNumber.`,
+      "AUDIT_READ_FAILURE"
+    );
+  }
+  if (typeof raw["operatorId"] !== "string" || raw["operatorId"].trim() === "") {
+    throw new ReconcilerError(
+      `[Reconciler] ${source} lacks operatorId.`,
+      "AUDIT_READ_FAILURE"
+    );
+  }
+  if (
+    raw["outcome"] !== "success" &&
+    raw["outcome"] !== "hard_failure" &&
+    raw["outcome"] !== "cooldown" &&
+    raw["outcome"] !== "skipped" &&
+    raw["outcome"] !== "cancelled"
+  ) {
+    throw new ReconcilerError(
+      `[Reconciler] ${source} has an invalid outcome.`,
+      "AUDIT_READ_FAILURE"
+    );
+  }
+  if (
+    typeof raw["recordedAt"] !== "string" ||
+    Number.isNaN(Date.parse(raw["recordedAt"] as string))
+  ) {
+    throw new ReconcilerError(
+      `[Reconciler] ${source} lacks a valid recordedAt timestamp.`,
+      "AUDIT_READ_FAILURE"
+    );
+  }
+}
 
-  return zombies;
+function normalizeRecipientAddress(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function auditOutcomeToStateStatus(outcome: AuditOutcome): StateStatus {
+  switch (outcome) {
+    case "success":
+      return "success";
+    case "hard_failure":
+      return "hard_failure";
+    case "skipped":
+      return "skipped";
+    case "cancelled":
+      return "cancelled";
+    case "cooldown":
+      throw new ReconcilerError(
+        "[Reconciler] Cooldown audit evidence lacks a required cooldownUntil value; recovery is held.",
+        "UNCERTAIN_SUBMISSION"
+      );
+  }
 }
 
 // ─── Metadata Validation ──────────────────────────────────────────────────────

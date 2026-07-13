@@ -103,6 +103,8 @@ function validateRecipients(recipients: BatchRecipient[]): void {
     throw new Error(`[batchPlanner] recipients must be an array.`);
   }
 
+  const seenNormalizedRecipients = new Map<string, number>();
+
   for (let i = 0; i < recipients.length; i++) {
     const r = recipients[i]!;
 
@@ -118,6 +120,18 @@ function validateRecipients(recipients: BatchRecipient[]): void {
           `${String(r.amount)}. Amount must be a positive bigint.`
       );
     }
+
+    const normalized = r.address.trim().toLowerCase();
+    const firstIndex = seenNormalizedRecipients.get(normalized);
+    if (firstIndex !== undefined) {
+      throw new Error(
+        `[batchPlanner] Duplicate recipient after trim().toLowerCase(): ` +
+          `indexes ${firstIndex} and ${i}, normalized address "${normalized}". ` +
+          `Campaign allocation semantics require an explicit owner decision; ` +
+          `automatic aggregation is forbidden.`
+      );
+    }
+    seenNormalizedRecipients.set(normalized, i);
   }
 }
 

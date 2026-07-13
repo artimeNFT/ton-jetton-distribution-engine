@@ -144,10 +144,10 @@ function optionalNonNegativeIntEnv(name: string): number | undefined {
  */
 interface RawRecipient {
   address: string;
-  amount: string | number;
+  amount: string;
 }
 
-async function loadRecipients(targetsPath: string): Promise<RawRecipient[]> {
+export async function loadRecipients(targetsPath: string): Promise<RawRecipient[]> {
   const abs = path.resolve(targetsPath);
   let raw: string;
   try {
@@ -207,10 +207,10 @@ async function loadRecipients(targetsPath: string): Promise<RawRecipient[]> {
       );
     }
     const amt = o["amount"];
-    if (typeof amt !== "string" && typeof amt !== "number") {
+    if (typeof amt !== "string") {
       throw new Error(
         `[launchStageA] targets.json: entry at index ${i} is missing an "amount" field ` +
-          `(must be a string or number).`
+          `(must be an unsigned decimal string; JSON numeric amounts are forbidden).`
       );
     }
   }
@@ -221,43 +221,28 @@ async function loadRecipients(targetsPath: string): Promise<RawRecipient[]> {
 // ─── Amount Conversion ────────────────────────────────────────────────────────
 
 /**
- * Converts a raw amount value (string or number) to a positive bigint.
+ * Converts a raw decimal-string amount to a positive bigint.
  *
  * String rules:
  *   - Whitespace is trimmed.
- *   - A trailing "n" (bigint literal suffix) is stripped before conversion.
- *   - The remaining value must be an unsigned decimal integer string.
- *
- * Number rules:
- *   - Must be a positive safe integer (no floats, no negatives, no zero).
+ *   - The trimmed value must be an unsigned decimal integer string.
  *
  * Throws a descriptive error on the first violation, identifying the index.
  */
-function convertAmountToBigInt(raw: string | number, index: number): bigint {
-  let normalized: string;
-
-  if (typeof raw === "string") {
-    let trimmed = raw.trim();
-    if (trimmed.endsWith("n")) {
-      trimmed = trimmed.slice(0, -1);
-    }
-    if (!/^\d+$/.test(trimmed)) {
-      throw new Error(
-        `[launchStageA] targets.json: entry at index ${index} has an invalid amount string ` +
-          `"${raw}". After stripping optional "n" suffix, value must be an unsigned decimal ` +
-          `integer (e.g. "1000000000" or "1000000000n").`
-      );
-    }
-    normalized = trimmed;
-  } else {
-    // typeof raw === "number"
-    if (!Number.isInteger(raw) || raw <= 0 || !Number.isSafeInteger(raw)) {
-      throw new Error(
-        `[launchStageA] targets.json: entry at index ${index} has an invalid amount number ` +
-          `${String(raw)}. Amount must be a positive safe integer.`
-      );
-    }
-    normalized = String(raw);
+export function convertAmountToBigInt(raw: string, index: number): bigint {
+  if (typeof raw !== "string") {
+    throw new Error(
+      `[launchStageA] targets.json: entry at index ${index} amount must be a decimal string. ` +
+        `JSON numeric amounts are forbidden.`
+    );
+  }
+  const normalized = raw.trim();
+  if (!/^\d+$/.test(normalized)) {
+    throw new Error(
+      `[launchStageA] targets.json: entry at index ${index} has an invalid amount string ` +
+        `"${raw}". Value must be an unsigned decimal integer string ` +
+        `(e.g. "1000000000").`
+    );
   }
 
   let converted: bigint;
@@ -281,10 +266,10 @@ function convertAmountToBigInt(raw: string | number, index: number): bigint {
 }
 
 /**
- * Maps raw recipients (amount as string | number) into the shape expected by
+ * Maps raw recipients (amount as decimal string) into the shape expected by
  * batchPlanner (amount as bigint). All other fields are passed through unchanged.
  */
-function mapRecipients(
+export function mapRecipients(
   raw: RawRecipient[]
 ): Array<{ address: string; amount: bigint; [key: string]: unknown }> {
   return raw.map((r, i) => ({
@@ -505,23 +490,10 @@ function buildDispatcherAuditRecorder(
       const resolvedAmount = amountLookup.get(lookupKey);
 
       if (resolvedAmount === undefined) {
-        // Cannot produce a valid CSV row: auditWriter rejects non-/^\d+$/ amounts
-        // and patching auditWriter.ts is out of scope for this change. Emit a
-        // structured warning so the gap is fully traceable in the run log.
-        console.warn(
-          JSON.stringify({
-            level: "warn",
-            msg: "[DispatcherAuditRecorder] CSV row skipped — amount unresolvable",
-            reason: "amount_unresolved_in_audit_adapter",
-            recipientAddress,
-            lookupKey,
-            batchId,
-            campaignId: event.campaignId,
-            type: event.type,
-            ts: new Date(event.ts).toISOString(),
-          })
+        throw new Error(
+          `[DispatcherAuditRecorder] Required ${event.type} evidence cannot be written: ` +
+            `amount is unresolvable for ${batchId}/${recipientAddress}.`
         );
-        return;
       }
 
       const row: AuditRow = {
@@ -545,9 +517,8 @@ function buildDispatcherAuditRecorder(
 
 // ─── Local Adapter B: Reconciler AuditWriter ─────────────────────────────────
 //
-// For Stage A dry-run, no prior audit records exist on disk.
-// readTerminalEntries returns [] — safe and correct for a fresh first run.
-// A persistent implementation backed by the audit CSV can be wired in Stage B.
+// Stage A does not infer recovery evidence. With no bound terminal-evidence
+// reader, submitted uncertainty is held by the Reconciler rather than replanned.
 
 const reconcilerAuditWriter: AuditWriter = {
   async readTerminalEntries(_campaignId: string): Promise<AuditLogEntry[]> {
@@ -866,7 +837,7 @@ export async function run(_provider: NetworkProvider): Promise<void> {
     })
   );
 
-  // Convert raw amounts (string | number) → bigint, as required by batchPlanner.
+  // Convert raw decimal-string amounts → bigint, as required by batchPlanner.
   // All other fields (address, tag, memo, …) are spread through unchanged.
   // The cast through unknown bridges the structural RawRecipient → BatchRecipient
   // gap caused by batchPlanner.ts not being present in the provided file tree.

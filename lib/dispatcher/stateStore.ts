@@ -127,6 +127,28 @@ export interface AtomicStateStore {
   update(mutator: (draft: RunState) => void | RunState): Promise<RunState>;
 }
 
+export type GuardedEntryStatus = StateStatus | "absent";
+
+export interface EntryTransitionGuard {
+  allowedStatuses: readonly GuardedEntryStatus[];
+  expectedAttemptNumber?: number;
+  expectedOperatorId?: string | null;
+}
+
+export interface RunLockIdentity {
+  batchId: string;
+  operatorId: string;
+  attemptNumber: number;
+}
+
+export class StateConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StateConflictError";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
 // ─── Schema Constants ─────────────────────────────────────────────────────────
 
 const SCHEMA_VERSION = "stage-a-entry-centric-v1" as const;
@@ -229,7 +251,23 @@ export async function loadState(
     );
   }
 
-  // Normalise meta sub-object.
+  // Validate root containers before interpreting their contents. Persisted
+  // state is execution truth; malformed containers are never defaulted into an
+  // execution-eligible shape.
+  if (obj["meta"] === null || typeof obj["meta"] !== "object" || Array.isArray(obj["meta"])) {
+    throw new Error(`[stateStore] State file at "${statePath}" has an invalid "meta" object.`);
+  }
+  if (obj["entries"] === null || typeof obj["entries"] !== "object" || Array.isArray(obj["entries"])) {
+    throw new Error(`[stateStore] State file at "${statePath}" has an invalid "entries" map.`);
+  }
+  if (obj["operators"] === null || typeof obj["operators"] !== "object" || Array.isArray(obj["operators"])) {
+    throw new Error(`[stateStore] State file at "${statePath}" has an invalid "operators" map.`);
+  }
+  if (obj["lock"] === null || typeof obj["lock"] !== "object" || Array.isArray(obj["lock"])) {
+    throw new Error(`[stateStore] State file at "${statePath}" has an invalid "lock" object.`);
+  }
+
+  // Validate meta sub-object.
   const rawMeta =
     obj["meta"] !== null &&
     typeof obj["meta"] === "object" &&
@@ -237,18 +275,6 @@ export async function loadState(
       ? (obj["meta"] as Record<string, unknown>)
       : ({} as Record<string, unknown>);
 
-  if (!rawMeta["campaignId"]) {
-    rawMeta["campaignId"] = campaignId;
-  }
-  if (
-    !rawMeta["batchAttempts"] ||
-    typeof rawMeta["batchAttempts"] !== "object" ||
-    Array.isArray(rawMeta["batchAttempts"])
-  ) {
-    rawMeta["batchAttempts"] = {};
-  }
-
-  // Normalise containers to empty objects if absent or wrong type.
   const entries =
     obj["entries"] !== null &&
     typeof obj["entries"] === "object" &&
@@ -271,26 +297,16 @@ export async function loadState(
       ? (obj["lock"] as Record<string, unknown>)
       : ({} as Record<string, unknown>);
 
-  const lock: RunLock = {
-    activeBatchId:
-      typeof rawLock["activeBatchId"] === "string" ? rawLock["activeBatchId"] : null,
-    activeOperatorId:
-      typeof rawLock["activeOperatorId"] === "string" ? rawLock["activeOperatorId"] : null,
-    activeAttemptNumber:
-      typeof rawLock["activeAttemptNumber"] === "number"
-        ? rawLock["activeAttemptNumber"]
-        : null,
-    lockedAt:
-      typeof rawLock["lockedAt"] === "string" ? rawLock["lockedAt"] : null,
+  const state: RunState = {
+    schemaVersion: SCHEMA_VERSION,
+    meta: validateMeta(rawMeta, campaignId, statePath),
+    entries: validateEntries(entries, statePath),
+    operators: validateOperators(operators, statePath),
+    lock: validateLock(rawLock, statePath),
   };
 
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    meta: normalizeMeta(rawMeta, campaignId),
-    entries: normalizeEntries(entries),
-    operators: normalizeOperators(operators),
-    lock,
-  };
+  assertValidRunState(state, campaignId);
+  return state;
 }
 
 // ─── Normalization Helpers ────────────────────────────────────────────────────
@@ -327,49 +343,35 @@ const VALID_OPERATOR_STATUSES: ReadonlySet<string> = new Set([
   "paused",
 ]);
 
-function normIsoOrNull(v: unknown): ISO8601 | null {
-  return typeof v === "string" && v.trim().length > 0 ? v : null;
-}
-
-function normIsoOrNow(v: unknown, fallback: ISO8601): ISO8601 {
-  return typeof v === "string" && v.trim().length > 0 ? v : fallback;
-}
-
-function normStringOrNull(v: unknown): string | null {
-  return typeof v === "string" ? v : null;
-}
-
-/**
- * Strict normalisation of RunMeta. No unsafe cast — every field is
- * individually validated and defaulted.
- */
-function normalizeMeta(
+function validateMeta(
   raw: Record<string, unknown>,
-  campaignId: string
+  campaignId: string,
+  source: string
 ): RunMeta {
-  const now = new Date().toISOString();
-  return {
-    campaignId:
-      typeof raw["campaignId"] === "string" && raw["campaignId"].trim().length > 0
-        ? raw["campaignId"]
-        : campaignId,
-    status: VALID_CAMPAIGN_STATUSES.has(String(raw["status"]))
-      ? (raw["status"] as CampaignStatus)
-      : "idle",
-    createdAt: normIsoOrNow(raw["createdAt"], now),
-    updatedAt: normIsoOrNow(raw["updatedAt"], now),
-    startedAt: normIsoOrNull(raw["startedAt"]),
-    finishedAt: normIsoOrNull(raw["finishedAt"]),
-    stopReason: normStringOrNull(raw["stopReason"]),
-    lastError: normStringOrNull(raw["lastError"]),
-    batchAttempts:
-      raw["batchAttempts"] !== null &&
-      typeof raw["batchAttempts"] === "object" &&
-      !Array.isArray(raw["batchAttempts"])
-        ? (raw["batchAttempts"] as Record<string, number>)
-        : {},
-    lastReconciledAt: normIsoOrNull(raw["lastReconciledAt"]),
-  };
+  requireNonEmptyString(raw["campaignId"], `${source}: meta.campaignId`);
+  if (raw["campaignId"] !== campaignId) {
+    throw new Error(`[stateStore] ${source}: meta.campaignId does not match requested campaign "${campaignId}".`);
+  }
+  if (!VALID_CAMPAIGN_STATUSES.has(String(raw["status"]))) {
+    throw new Error(`[stateStore] ${source}: invalid meta.status ${JSON.stringify(raw["status"])}.`);
+  }
+  requireIso(raw["createdAt"], `${source}: meta.createdAt`);
+  requireIso(raw["updatedAt"], `${source}: meta.updatedAt`);
+  requireNullableIso(raw["startedAt"], `${source}: meta.startedAt`);
+  requireNullableIso(raw["finishedAt"], `${source}: meta.finishedAt`);
+  requireNullableString(raw["stopReason"], `${source}: meta.stopReason`);
+  requireNullableString(raw["lastError"], `${source}: meta.lastError`);
+  requireNullableIso(raw["lastReconciledAt"], `${source}: meta.lastReconciledAt`);
+  if (raw["batchAttempts"] === null || typeof raw["batchAttempts"] !== "object" || Array.isArray(raw["batchAttempts"])) {
+    throw new Error(`[stateStore] ${source}: meta.batchAttempts must be an object.`);
+  }
+  for (const [batchId, attempt] of Object.entries(raw["batchAttempts"] as Record<string, unknown>)) {
+    requireNonEmptyString(batchId, `${source}: meta.batchAttempts key`);
+    if (!Number.isInteger(attempt) || (attempt as number) < 0) {
+      throw new Error(`[stateStore] ${source}: meta.batchAttempts[${JSON.stringify(batchId)}] must be an integer >= 0.`);
+    }
+  }
+  return raw as unknown as RunMeta;
 }
 
 /**
@@ -377,140 +379,67 @@ function normalizeMeta(
  * Malformed field values are replaced with safe defaults; entries are never
  * dropped so the Reconciler always sees the full picture.
  */
-function normalizeEntries(
-  raw: Record<StateKey, StateEntry>
+function validateEntries(
+  raw: Record<StateKey, StateEntry>,
+  source: string
 ): Record<StateKey, StateEntry> {
-  const now = new Date().toISOString();
-  const normalised: Record<StateKey, StateEntry> = {};
-
+  const validated: Record<StateKey, StateEntry> = {};
   for (const [key, rawEntry] of Object.entries(raw)) {
-    if (rawEntry === null || typeof rawEntry !== "object") {
-      // Corrupt entry — insert a recoverable placeholder.
-      normalised[key] = {
-        batchId: key,
-        recipientAddress: "",
-        recipientIndex: 0,
-        amount: "0",
-        status: "planned",
-        attemptNumber: 1,
-        operatorId: null,
-        operatorLabel: null,
-        txHash: null,
-        networkRef: null,
-        createdAt: now,
-        updatedAt: now,
-        submittedAt: null,
-        finalizedAt: null,
-        cooldownUntil: null,
-        lastErrorCode: null,
-        lastError: "entry was corrupt on load and has been reset",
-        lastDecision: "none",
-      };
-      continue;
-    }
-
-    const e = rawEntry as unknown as Record<string, unknown>;
-
-    const rawStatus = VALID_STATE_STATUSES.has(String(e["status"]))
-      ? (e["status"] as StateStatus)
-      : "planned";
-
-    const attemptRaw = Number(e["attemptNumber"]);
-    const minimumAttemptNumber = rawStatus === "planned" ? 0 : 1;
-    const attemptNumber =
-      Number.isInteger(attemptRaw) && attemptRaw >= minimumAttemptNumber
-        ? attemptRaw
-        : minimumAttemptNumber;
-
-    const recipientIndexRaw = Number(e["recipientIndex"]);
-    const recipientIndex = Number.isFinite(recipientIndexRaw)
-      ? Math.floor(recipientIndexRaw)
-      : 0;
-
-    const rawMetadata = e["metadata"];
-    const metadata: Record<string, unknown> | undefined =
-      rawMetadata !== null &&
-      typeof rawMetadata === "object" &&
-      !Array.isArray(rawMetadata)
-        ? (rawMetadata as Record<string, unknown>)
-        : undefined;
-
-    const entry: StateEntry = {
-      batchId: typeof e["batchId"] === "string" ? e["batchId"] : String(key),
-      recipientAddress:
-        typeof e["recipientAddress"] === "string" ? e["recipientAddress"] : "",
-      recipientIndex,
-      amount: typeof e["amount"] === "string" ? e["amount"] : "0",
-      status: rawStatus,
-      attemptNumber,
-      operatorId: normStringOrNull(e["operatorId"]),
-      operatorLabel: normStringOrNull(e["operatorLabel"]),
-      txHash: normStringOrNull(e["txHash"]),
-      networkRef: normStringOrNull(e["networkRef"]),
-      createdAt: normIsoOrNow(e["createdAt"], now),
-      updatedAt: normIsoOrNow(e["updatedAt"], now),
-      submittedAt: normIsoOrNull(e["submittedAt"]),
-      finalizedAt: normIsoOrNull(e["finalizedAt"]),
-      cooldownUntil: normIsoOrNull(e["cooldownUntil"]),
-      lastErrorCode: normStringOrNull(e["lastErrorCode"]),
-      lastError: normStringOrNull(e["lastError"]),
-      lastDecision:
-        e["lastDecision"] === null
-          ? null
-          : VALID_RETRY_DISPOSITIONS.has(String(e["lastDecision"]))
-          ? (e["lastDecision"] as RetryDisposition)
-          : "none",
-    };
-
-    if (metadata !== undefined) {
-      entry.metadata = metadata;
-    }
-
-    normalised[key] = entry;
+    assertValidStateEntry(key, rawEntry, `${source}: entries[${JSON.stringify(key)}]`);
+    validated[key] = rawEntry;
   }
-
-  return normalised;
+  return validated;
 }
 
 /**
  * Strict normalisation of every OperatorRuntimeState record.
  * No unsafe cast — every field validated individually.
  */
-function normalizeOperators(
-  raw: Record<string, OperatorRuntimeState>
+function validateOperators(
+  raw: Record<string, OperatorRuntimeState>,
+  source: string
 ): Record<string, OperatorRuntimeState> {
-  const normalised: Record<string, OperatorRuntimeState> = {};
-
+  const validated: Record<string, OperatorRuntimeState> = {};
   for (const [id, rawOp] of Object.entries(raw)) {
-    if (rawOp === null || typeof rawOp !== "object") {
-      normalised[id] = emptyOperatorRuntime();
-      continue;
+    requireNonEmptyString(id, `${source}: operator id`);
+    if (rawOp === null || typeof rawOp !== "object" || Array.isArray(rawOp)) {
+      throw new Error(`[stateStore] ${source}: operators[${JSON.stringify(id)}] must be an object.`);
     }
-
     const o = rawOp as unknown as Record<string, unknown>;
-
-    const consecutiveRaw = Number(o["consecutiveFailures"]);
-    const consecutiveFailures =
-      Number.isInteger(consecutiveRaw) && consecutiveRaw >= 0
-        ? consecutiveRaw
-        : 0;
-
-    normalised[id] = {
-      status: VALID_OPERATOR_STATUSES.has(String(o["status"]))
-        ? (o["status"] as OperatorStatus)
-        : "active",
-      paused: o["paused"] === true,
-      cooldownUntil: normIsoOrNull(o["cooldownUntil"]),
-      failedUntil: normIsoOrNull(o["failedUntil"]),
-      consecutiveFailures,
-      lastSelectedAt: normIsoOrNull(o["lastSelectedAt"]),
-      lastSuccessAt: normIsoOrNull(o["lastSuccessAt"]),
-      lastFailureAt: normIsoOrNull(o["lastFailureAt"]),
-      lastError: normStringOrNull(o["lastError"]),
-    };
+    if (!VALID_OPERATOR_STATUSES.has(String(o["status"]))) {
+      throw new Error(`[stateStore] ${source}: invalid operator status for ${JSON.stringify(id)}.`);
+    }
+    if (typeof o["paused"] !== "boolean") {
+      throw new Error(`[stateStore] ${source}: operators[${JSON.stringify(id)}].paused must be boolean.`);
+    }
+    if (!Number.isInteger(o["consecutiveFailures"]) || (o["consecutiveFailures"] as number) < 0) {
+      throw new Error(`[stateStore] ${source}: operators[${JSON.stringify(id)}].consecutiveFailures must be an integer >= 0.`);
+    }
+    requireNullableIso(o["cooldownUntil"], `${source}: operator.cooldownUntil`);
+    requireNullableIso(o["failedUntil"], `${source}: operator.failedUntil`);
+    requireNullableIso(o["lastSelectedAt"], `${source}: operator.lastSelectedAt`);
+    requireNullableIso(o["lastSuccessAt"], `${source}: operator.lastSuccessAt`);
+    requireNullableIso(o["lastFailureAt"], `${source}: operator.lastFailureAt`);
+    requireNullableString(o["lastError"], `${source}: operator.lastError`);
+    validated[id] = rawOp;
   }
+  return validated;
+}
 
-  return normalised;
+function validateLock(raw: Record<string, unknown>, source: string): RunLock {
+  requireNullableString(raw["activeBatchId"], `${source}: lock.activeBatchId`);
+  requireNullableString(raw["activeOperatorId"], `${source}: lock.activeOperatorId`);
+  requireNullableIso(raw["lockedAt"], `${source}: lock.lockedAt`);
+  if (raw["activeAttemptNumber"] !== null && (!Number.isInteger(raw["activeAttemptNumber"]) || (raw["activeAttemptNumber"] as number) < 1)) {
+    throw new Error(`[stateStore] ${source}: lock.activeAttemptNumber must be null or an integer >= 1.`);
+  }
+  const values = [raw["activeBatchId"], raw["activeOperatorId"], raw["activeAttemptNumber"], raw["lockedAt"]];
+  const allNull = values.every((v) => v === null);
+  const allPresent = values.every((v) => v !== null);
+  if (!allNull && !allPresent) {
+    throw new Error(`[stateStore] ${source}: run lock must be entirely clear or entirely populated.`);
+  }
+  return raw as unknown as RunLock;
 }
 
 function emptyOperatorRuntime(): OperatorRuntimeState {
@@ -542,6 +471,7 @@ export async function saveStateAtomic(
   statePath: string,
   state: RunState
 ): Promise<void> {
+  assertValidRunState(state, state.meta.campaignId);
   const dir = path.dirname(path.resolve(statePath));
   await fs.mkdir(dir, { recursive: true });
 
@@ -581,6 +511,158 @@ export function upsertEntry(
 ): RunState {
   state.entries[key] = entry;
   return state;
+}
+
+/**
+ * The single guarded entry mutation primitive used by the active Dispatcher
+ * and Reconciler paths. The state-store transaction supplies atomicity; this
+ * function supplies stale-read and conflicting-state rejection.
+ */
+export function setEntryGuarded(
+  state: RunState,
+  key: StateKey,
+  guard: EntryTransitionGuard,
+  nextEntry: StateEntry
+): StateEntry {
+  const current = state.entries[key];
+  const currentStatus: GuardedEntryStatus = current?.status ?? "absent";
+  if (!guard.allowedStatuses.includes(currentStatus)) {
+    throw new StateConflictError(
+      `[stateStore] Guarded transition rejected for "${key}": expected status in ` +
+        `${JSON.stringify(guard.allowedStatuses)}, found "${currentStatus}".`
+    );
+  }
+  if (guard.expectedAttemptNumber !== undefined && current?.attemptNumber !== guard.expectedAttemptNumber) {
+    throw new StateConflictError(
+      `[stateStore] Guarded transition rejected for "${key}": expected attempt ` +
+        `${guard.expectedAttemptNumber}, found ${String(current?.attemptNumber)}.`
+    );
+  }
+  if (guard.expectedOperatorId !== undefined && current?.operatorId !== guard.expectedOperatorId) {
+    throw new StateConflictError(
+      `[stateStore] Guarded transition rejected for "${key}": expected operator ` +
+        `${JSON.stringify(guard.expectedOperatorId)}, found ${JSON.stringify(current?.operatorId)}.`
+    );
+  }
+  assertValidStateEntry(key, nextEntry, `guarded next entry ${JSON.stringify(key)}`);
+  state.entries[key] = nextEntry;
+  return nextEntry;
+}
+
+export function acquireRunLockGuarded(state: RunState, identity: RunLockIdentity, lockedAt: ISO8601): void {
+  if (state.lock.activeBatchId !== null) {
+    throw new StateConflictError(
+      `[stateStore] Run lock is already held by batch ${JSON.stringify(state.lock.activeBatchId)}.`
+    );
+  }
+  requireIso(lockedAt, "run lock lockedAt");
+  state.lock = {
+    activeBatchId: identity.batchId,
+    activeOperatorId: identity.operatorId,
+    activeAttemptNumber: identity.attemptNumber,
+    lockedAt,
+  };
+}
+
+export function releaseRunLockGuarded(state: RunState, identity: RunLockIdentity): void {
+  if (
+    state.lock.activeBatchId !== identity.batchId ||
+    state.lock.activeOperatorId !== identity.operatorId ||
+    state.lock.activeAttemptNumber !== identity.attemptNumber
+  ) {
+    throw new StateConflictError(
+      `[stateStore] Refusing to clear a run lock not owned by ` +
+        `${identity.batchId}/${identity.operatorId}/${identity.attemptNumber}.`
+    );
+  }
+  state.lock = {
+    activeBatchId: null,
+    activeOperatorId: null,
+    activeAttemptNumber: null,
+    lockedAt: null,
+  };
+}
+
+export function assertValidRunState(state: RunState, campaignId: string): void {
+  if (state.schemaVersion !== SCHEMA_VERSION) {
+    throw new Error(`[stateStore] Invalid schemaVersion ${JSON.stringify(state.schemaVersion)}.`);
+  }
+  validateMeta(state.meta as unknown as Record<string, unknown>, campaignId, "RunState");
+  validateEntries(state.entries, "RunState");
+  validateOperators(state.operators, "RunState");
+  validateLock(state.lock as unknown as Record<string, unknown>, "RunState");
+}
+
+function assertValidStateEntry(key: string, rawEntry: unknown, source: string): asserts rawEntry is StateEntry {
+  if (rawEntry === null || typeof rawEntry !== "object" || Array.isArray(rawEntry)) {
+    throw new Error(`[stateStore] ${source} must be an object.`);
+  }
+  const e = rawEntry as Record<string, unknown>;
+  requireNonEmptyString(e["batchId"], `${source}.batchId`);
+  requireNonEmptyString(e["recipientAddress"], `${source}.recipientAddress`);
+  if (key !== makeStateKey(e["batchId"] as string, e["recipientAddress"] as string)) {
+    throw new Error(`[stateStore] ${source} key/content mismatch.`);
+  }
+  if (!Number.isInteger(e["recipientIndex"]) || (e["recipientIndex"] as number) < 0) {
+    throw new Error(`[stateStore] ${source}.recipientIndex must be an integer >= 0.`);
+  }
+  if (typeof e["amount"] !== "string" || !/^\d+$/.test(e["amount"] as string) || BigInt(e["amount"] as string) <= 0n) {
+    throw new Error(`[stateStore] ${source}.amount must be a positive unsigned decimal string.`);
+  }
+  if (!VALID_STATE_STATUSES.has(String(e["status"]))) {
+    throw new Error(`[stateStore] ${source}.status is invalid.`);
+  }
+  const minimumAttempt = e["status"] === "planned" ? 0 : 1;
+  if (!Number.isInteger(e["attemptNumber"]) || (e["attemptNumber"] as number) < minimumAttempt) {
+    throw new Error(`[stateStore] ${source}.attemptNumber is invalid for status ${String(e["status"])}.`);
+  }
+  requireNullableString(e["operatorId"], `${source}.operatorId`);
+  requireNullableString(e["operatorLabel"], `${source}.operatorLabel`);
+  requireNullableString(e["txHash"], `${source}.txHash`);
+  requireNullableString(e["networkRef"], `${source}.networkRef`);
+  requireIso(e["createdAt"], `${source}.createdAt`);
+  requireIso(e["updatedAt"], `${source}.updatedAt`);
+  requireNullableIso(e["submittedAt"], `${source}.submittedAt`);
+  requireNullableIso(e["finalizedAt"], `${source}.finalizedAt`);
+  requireNullableIso(e["cooldownUntil"], `${source}.cooldownUntil`);
+  requireNullableString(e["lastErrorCode"], `${source}.lastErrorCode`);
+  requireNullableString(e["lastError"], `${source}.lastError`);
+  if (e["lastDecision"] !== null && !VALID_RETRY_DISPOSITIONS.has(String(e["lastDecision"]))) {
+    throw new Error(`[stateStore] ${source}.lastDecision is invalid.`);
+  }
+  if (e["metadata"] !== undefined && (e["metadata"] === null || typeof e["metadata"] !== "object" || Array.isArray(e["metadata"]))) {
+    throw new Error(`[stateStore] ${source}.metadata must be an object when present.`);
+  }
+  if (e["status"] === "submitted") {
+    if (e["submittedAt"] === null || e["operatorId"] === null || e["operatorLabel"] === null) {
+      throw new Error(`[stateStore] ${source} submitted entries require submittedAt and operator identity.`);
+    }
+  }
+  if (e["status"] === "cooldown" && e["cooldownUntil"] === null) {
+    throw new Error(`[stateStore] ${source} cooldown entries require cooldownUntil.`);
+  }
+}
+
+function requireNonEmptyString(value: unknown, source: string): asserts value is string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`[stateStore] ${source} must be a non-empty string.`);
+  }
+}
+
+function requireNullableString(value: unknown, source: string): void {
+  if (value !== null && typeof value !== "string") {
+    throw new Error(`[stateStore] ${source} must be null or a string.`);
+  }
+}
+
+function requireIso(value: unknown, source: string): asserts value is string {
+  if (typeof value !== "string" || value.trim().length === 0 || Number.isNaN(Date.parse(value))) {
+    throw new Error(`[stateStore] ${source} must be a parseable ISO timestamp.`);
+  }
+}
+
+function requireNullableIso(value: unknown, source: string): void {
+  if (value !== null) requireIso(value, source);
 }
 
 // ─── JsonAtomicStateStore ─────────────────────────────────────────────────────
@@ -657,6 +739,10 @@ export class JsonAtomicStateStore implements AtomicStateStore {
 
       // Step 4: Stamp updatedAt unconditionally.
       nextState.meta.updatedAt = new Date().toISOString();
+
+      // Step 4b: Fail closed before persistence if any mutation produced an
+      // invalid or internally inconsistent RunState.
+      assertValidRunState(nextState, this.campaignId);
 
       // Step 5: Persist atomically.
       await saveStateAtomic(this.statePath, nextState);

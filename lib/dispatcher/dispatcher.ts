@@ -38,8 +38,10 @@ import {
 
 import {
   makeStateKey,
-  upsertEntry,
   JsonAtomicStateStore,
+  setEntryGuarded,
+  acquireRunLockGuarded,
+  releaseRunLockGuarded,
   type RunState,
   type StateEntry,
   type StateStatus,
@@ -97,9 +99,12 @@ export interface ProviderFailureInfo {
 
 export interface WalletPool {
   /** Returns the next available provider, or null if none are available. */
-  getNextAvailableProvider(now: number): Provider | null;
-  markSuccess(providerId: string, nowMs: number): void;
-  markFailure(providerId: string, info: ProviderFailureInfo): void;
+  getNextAvailableProvider(
+    now: number,
+    selectionKey?: string
+  ): Promise<Provider | null> | Provider | null;
+  markSuccess(providerId: string, nowMs: number): Promise<void> | void;
+  markFailure(providerId: string, info: ProviderFailureInfo): Promise<void> | void;
 }
 
 // --- Executor ----------------------------------------------------------------
@@ -408,13 +413,10 @@ class DefaultDispatcher implements Dispatcher {
         continue;
       }
 
-      // Increment batchAttempts counter. (1B: draft explicitly RunState)
-      await store.update((draft: RunState) => {
-        draft.meta.batchAttempts[batch.batchId] =
-          (draft.meta.batchAttempts[batch.batchId] ?? 0) + 1;
-      });
-
-      const provider = this.walletPool.getNextAvailableProvider(Date.now());
+      const provider = await this.walletPool.getNextAvailableProvider(
+        Date.now(),
+        `${campaignId}::${batch.batchId}`
+      );
       if (!provider) {
         this.logger.warn("[Dispatcher] No available provider for batch, deferring", {
           campaignId,
@@ -473,47 +475,56 @@ class DefaultDispatcher implements Dispatcher {
         continue;
       }
 
-      const batchAttemptNumber =
-        (await store.read()).meta.batchAttempts[batch.batchId] ?? 1;
-
-      // Set RunLock. (1B: draft explicitly RunState)
+      let batchAttemptNumber = 0;
       await store.update((draft: RunState) => {
-        draft.lock.activeBatchId = batch.batchId;
-        draft.lock.activeOperatorId = provider.id;
-        draft.lock.activeAttemptNumber = batchAttemptNumber;
-        draft.lock.lockedAt = nowIso();
+        batchAttemptNumber = (draft.meta.batchAttempts[batch.batchId] ?? 0) + 1;
+        draft.meta.batchAttempts[batch.batchId] = batchAttemptNumber;
+        acquireRunLockGuarded(
+          draft,
+          {
+            batchId: batch.batchId,
+            operatorId: provider.id,
+            attemptNumber: batchAttemptNumber,
+          },
+          nowIso()
+        );
       });
 
-      await this.auditRecorder.write({
-        type: "batch_in_flight",
-        campaignId,
+      const lockIdentity = {
         batchId: batch.batchId,
         operatorId: provider.id,
         attemptNumber: batchAttemptNumber,
-        ts: Date.now(),
-        details: { eligibleCount: cappedEligible.length },
-      }).catch(() => undefined);
+      };
 
-      const batchResult = await this.processBatch({
-        batch,
-        batchIndex,
-        cappedEligible,
-        plan,
-        provider,
-        campaign,
-        metadata,
-        store,
-      });
+      let batchResult: BatchResult;
+      try {
+        await this.auditRecorder.write({
+          type: "batch_in_flight",
+          campaignId,
+          batchId: batch.batchId,
+          operatorId: provider.id,
+          attemptNumber: batchAttemptNumber,
+          ts: Date.now(),
+          details: { eligibleCount: cappedEligible.length },
+        });
+
+        batchResult = await this.processBatch({
+          batch,
+          batchIndex,
+          cappedEligible,
+          plan,
+          provider,
+          campaign,
+          metadata,
+          store,
+        });
+      } finally {
+        await store.update((draft: RunState) => {
+          releaseRunLockGuarded(draft, lockIdentity);
+        });
+      }
 
       batchSummaries.push(batchResult.summary);
-
-      // Clear RunLock. (1B: draft explicitly RunState)
-      await store.update((draft: RunState) => {
-        draft.lock.activeBatchId = null;
-        draft.lock.activeOperatorId = null;
-        draft.lock.activeAttemptNumber = null;
-        draft.lock.lockedAt = null;
-      });
 
       // 1F: Inter-batch pacing — applied after lock release, before the
       // stop_campaign check, so we never sleep on the final batch or when
@@ -583,13 +594,13 @@ class DefaultDispatcher implements Dispatcher {
         type: "campaign_completed",
         campaignId,
         ts: Date.now(),
-      }).catch(() => undefined);
+      });
     } else if (finalStatus === "stopped") {
       await this.auditRecorder.write({
         type: "campaign_stopped",
         campaignId,
         ts: Date.now(),
-      }).catch(() => undefined);
+      });
     }
 
     const report = buildDispatchReport(
@@ -665,37 +676,82 @@ class DefaultDispatcher implements Dispatcher {
       const stateKey = makeStateKey(batch.batchId, recipient.address);
       const currentNow = nowIso();
 
-      // Hook & Lock: persist "submitted" BEFORE broadcast.
-      const preState = await store.read();
-      const existing: StateEntry | undefined = preState.entries[stateKey];
-      const nextAttemptNumber = (existing?.attemptNumber ?? 0) + 1;
-      const entryCreatedAt = existing?.createdAt ?? currentNow;
+      // Hook & Lock: eligibility revalidation and the submitted transition occur
+      // in the same atomic state-store transaction. The earlier eligible list is
+      // advisory only and can never authorize a blind overwrite.
+      const submittedState = await store.update((draft: RunState) => {
+        const existing: StateEntry | undefined = draft.entries[stateKey];
+        const cooldownExpired =
+          existing?.status === "cooldown" &&
+          existing.cooldownUntil !== null &&
+          Date.parse(existing.cooldownUntil) <= Date.parse(currentNow);
 
-      const submittedEntry: StateEntry = {
-        batchId: batch.batchId,
-        recipientAddress: recipient.address,
-        recipientIndex: originalIndex,
-        amount: recipient.amount.toString(),
-        status: "submitted",
-        attemptNumber: nextAttemptNumber,
-        operatorId: provider.id,
-        operatorLabel: provider.label,
-        txHash: null,
-        networkRef: null,
-        createdAt: entryCreatedAt,
-        updatedAt: currentNow,
-        submittedAt: currentNow,
-        finalizedAt: null,
-        cooldownUntil: null,
-        lastErrorCode: null,
-        lastError: null,
-        lastDecision: "none",
-      };
+        if (
+          existing !== undefined &&
+          existing.status !== "planned" &&
+          !cooldownExpired
+        ) {
+          throw new Error(
+            `[Dispatcher] Guarded submission rejected for "${stateKey}": ` +
+              `current status is "${existing.status}".`
+          );
+        }
 
-      // Atomic persistence of submitted state. (1B: draft explicitly RunState)
-      await store.update((draft: RunState) => {
-        upsertEntry(draft, stateKey, submittedEntry);
+        const nextAttemptNumber = (existing?.attemptNumber ?? 0) + 1;
+        const next: StateEntry = {
+          batchId: batch.batchId,
+          recipientAddress: recipient.address,
+          recipientIndex: originalIndex,
+          amount: recipient.amount.toString(),
+          status: "submitted",
+          attemptNumber: nextAttemptNumber,
+          operatorId: provider.id,
+          operatorLabel: provider.label,
+          txHash: null,
+          networkRef: null,
+          createdAt: existing?.createdAt ?? currentNow,
+          updatedAt: currentNow,
+          submittedAt: currentNow,
+          finalizedAt: null,
+          cooldownUntil: null,
+          lastErrorCode: null,
+          lastError: null,
+          lastDecision: "none",
+        };
+
+        setEntryGuarded(
+          draft,
+          stateKey,
+          {
+            allowedStatuses: [existing?.status ?? "absent"],
+            ...(existing !== undefined
+              ? { expectedAttemptNumber: existing.attemptNumber }
+              : {}),
+          },
+          next
+        );
       });
+
+      const activeSubmittedEntry = submittedState.entries[stateKey];
+      if (activeSubmittedEntry === undefined || activeSubmittedEntry.status !== "submitted") {
+        throw new Error(`[Dispatcher] Guarded submission did not produce an entry for "${stateKey}".`);
+      }
+      const nextAttemptNumber = activeSubmittedEntry.attemptNumber;
+
+      const transitionSubmitted = async (next: StateEntry): Promise<void> => {
+        await store.update((draft: RunState) => {
+          setEntryGuarded(
+            draft,
+            stateKey,
+            {
+              allowedStatuses: ["submitted"],
+              expectedAttemptNumber: nextAttemptNumber,
+              expectedOperatorId: provider.id,
+            },
+            next
+          );
+        });
+      };
 
       this.logger.info("[Dispatcher] Hook & Lock: entry submitted", {
         campaignId,
@@ -708,23 +764,9 @@ class DefaultDispatcher implements Dispatcher {
       // Broadcast
       if (this.dryRun && !this.forceExecutorInDryRun) {
         const successNow = nowIso();
-        // (1B: draft explicitly RunState)
-        await store.update((draft: RunState) => {
-          upsertEntry(draft, stateKey, {
-            ...submittedEntry,
-            status: "success",
-            updatedAt: successNow,
-            finalizedAt: successNow,
-            txHash: "dry-run-tx",
-            networkRef: null,
-            lastErrorCode: null,
-            lastError: null,
-            lastDecision: "none",
-          });
-        });
-        this.walletPool.markSuccess(provider.id, Date.now());
-
-        // 1C: Dry-run success writes batch_success audit, identical shape to live path.
+        // Required evidence is committed before the terminal state transition.
+        // If evidence fails, the entry remains submitted and the run cannot be
+        // reported complete.
         await this.auditRecorder.write({
           type: "batch_success",
           campaignId,
@@ -738,7 +780,20 @@ class DefaultDispatcher implements Dispatcher {
             networkRef: null,
             dryRun: true,
           },
-        }).catch(() => undefined);
+        });
+
+        await transitionSubmitted({
+          ...activeSubmittedEntry,
+          status: "success",
+          updatedAt: successNow,
+          finalizedAt: successNow,
+          txHash: "dry-run-tx",
+          networkRef: null,
+          lastErrorCode: null,
+          lastError: null,
+          lastDecision: "none",
+        });
+        await this.walletPool.markSuccess(provider.id, Date.now());
 
         succeeded++;
 
@@ -770,23 +825,6 @@ class DefaultDispatcher implements Dispatcher {
       // Success path
       if (broadcastResult !== null) {
         const successNow = nowIso();
-        // (1B: draft explicitly RunState)
-        await store.update((draft: RunState) => {
-          upsertEntry(draft, stateKey, {
-            ...submittedEntry,
-            status: "success",
-            txHash: broadcastResult!.txHash,
-            networkRef: broadcastResult!.networkRef ?? null,
-            updatedAt: successNow,
-            finalizedAt: successNow,
-            lastErrorCode: null,
-            lastError: null,
-            lastDecision: "none",
-          });
-        });
-
-        this.walletPool.markSuccess(provider.id, Date.now());
-
         await this.auditRecorder.write({
           type: "batch_success",
           campaignId,
@@ -799,7 +837,21 @@ class DefaultDispatcher implements Dispatcher {
             txHash: broadcastResult.txHash,
             networkRef: broadcastResult.networkRef ?? null,
           },
-        }).catch(() => undefined);
+        });
+
+        await transitionSubmitted({
+          ...activeSubmittedEntry,
+          status: "success",
+          txHash: broadcastResult.txHash,
+          networkRef: broadcastResult.networkRef ?? null,
+          updatedAt: successNow,
+          finalizedAt: successNow,
+          lastErrorCode: null,
+          lastError: null,
+          lastDecision: "none",
+        });
+
+        await this.walletPool.markSuccess(provider.id, Date.now());
 
         succeeded++;
 
@@ -826,11 +878,17 @@ class DefaultDispatcher implements Dispatcher {
         operatorId: provider.id,
       });
 
+      const uncertainSubmission = decision.reasonCode === "uncertain_submission";
+      const effectiveDisposition: RetryDisposition = uncertainSubmission
+        ? "stop_campaign"
+        : decision.disposition;
+
       this.logger.warn("[Dispatcher] Outcome Classification: failure", {
         campaignId,
         batchId: batch.batchId,
         stateKey,
-        disposition: decision.disposition,
+        disposition: effectiveDisposition,
+        classifierDisposition: decision.disposition,
         reasonCode: decision.reasonCode,
         reason: decision.reason,
       });
@@ -844,26 +902,62 @@ class DefaultDispatcher implements Dispatcher {
         ts: Date.now(),
         details: {
           stateKey,
-          disposition: decision.disposition,
+          disposition: effectiveDisposition,
+          classifierDisposition: decision.disposition,
           reasonCode: decision.reasonCode,
           reason: decision.reason,
         },
-      }).catch(() => undefined);
+      });
+
+      // Uncertain submission is never retry-eligible. Preserve the exact
+      // submitted attempt as a fail-closed hold and stop the campaign pending
+      // evidence-bound reconciliation. The classifier may retain its legacy
+      // retry_same_identity mapping, but the active Dispatcher must not expose
+      // a replacement attempt after a possibly successful broadcast.
+      if (uncertainSubmission) {
+        const holdNow = nowIso();
+        await store.update((draft: RunState) => {
+          setEntryGuarded(
+            draft,
+            stateKey,
+            {
+              allowedStatuses: ["submitted"],
+              expectedAttemptNumber: nextAttemptNumber,
+              expectedOperatorId: provider.id,
+            },
+            {
+              ...activeSubmittedEntry,
+              status: "submitted",
+              updatedAt: holdNow,
+              finalizedAt: null,
+              lastErrorCode: decision.reasonCode,
+              lastError: decision.reason,
+              lastDecision: "stop_campaign",
+            }
+          );
+          draft.meta.status = "stopped";
+          draft.meta.finishedAt = holdNow;
+          draft.meta.stopReason = decision.reason;
+          draft.meta.lastError = decision.reason;
+        });
+
+        failed++;
+        aborted = true;
+        signal = "stop_campaign";
+        break;
+      }
 
       // Branch: retry_same_identity
       if (decision.disposition === "retry_same_identity") {
         const retryNow = nowIso();
-        // (1B: draft explicitly RunState)
-        await store.update((draft: RunState) => {
-          upsertEntry(draft, stateKey, {
-            ...submittedEntry,
-            status: "planned",
-            updatedAt: retryNow,
-            finalizedAt: retryNow,
-            lastErrorCode: decision.reasonCode,
-            lastError: decision.reason,
-            lastDecision: "retry_same_identity",
-          });
+        await transitionSubmitted({
+          ...activeSubmittedEntry,
+          status: "planned",
+          updatedAt: retryNow,
+          finalizedAt: retryNow,
+          lastErrorCode: decision.reasonCode,
+          lastError: decision.reason,
+          lastDecision: "retry_same_identity",
         });
         // Do NOT call walletPool.markFailure for retry_same_identity.
         continue;
@@ -871,7 +965,7 @@ class DefaultDispatcher implements Dispatcher {
 
       // Branch: rotate_identity
       if (decision.disposition === "rotate_identity") {
-        this.walletPool.markFailure(provider.id, {
+        await this.walletPool.markFailure(provider.id, {
           reason: decision.reason,
           cooldownUntil: decision.cooldownUntil ?? null,
           failedUntil: decision.failedUntil ?? null,
@@ -883,20 +977,17 @@ class DefaultDispatcher implements Dispatcher {
           decision.cooldownUntil != null &&
           new Date(decision.cooldownUntil).getTime() > Date.now();
 
-        // (1B: draft explicitly RunState)
-        await store.update((draft: RunState) => {
-          upsertEntry(draft, stateKey, {
-            ...submittedEntry,
-            status: isCooldown ? "cooldown" : "planned",
-            cooldownUntil: decision.cooldownUntil
-              ? new Date(decision.cooldownUntil).toISOString()
-              : null,
-            updatedAt: rotateNow,
-            finalizedAt: rotateNow,
-            lastErrorCode: decision.reasonCode,
-            lastError: decision.reason,
-            lastDecision: "rotate_identity",
-          });
+        await transitionSubmitted({
+          ...activeSubmittedEntry,
+          status: isCooldown ? "cooldown" : "planned",
+          cooldownUntil: decision.cooldownUntil
+            ? new Date(decision.cooldownUntil).toISOString()
+            : null,
+          updatedAt: rotateNow,
+          finalizedAt: rotateNow,
+          lastErrorCode: decision.reasonCode,
+          lastError: decision.reason,
+          lastDecision: "rotate_identity",
         });
 
         await this.auditRecorder.write({
@@ -911,7 +1002,7 @@ class DefaultDispatcher implements Dispatcher {
             reason: decision.reason,
             cooldownUntil: decision.cooldownUntil ?? null,
           },
-        }).catch(() => undefined);
+        });
 
         aborted = true;
         cooldown += plan.orderedRecipientIndexes.length - planIdx - 1;
@@ -922,17 +1013,14 @@ class DefaultDispatcher implements Dispatcher {
       // Branch: fail_batch
       if (decision.disposition === "fail_batch") {
         const failNow = nowIso();
-        // (1B: draft explicitly RunState)
-        await store.update((draft: RunState) => {
-          upsertEntry(draft, stateKey, {
-            ...submittedEntry,
-            status: "hard_failure",
-            updatedAt: failNow,
-            finalizedAt: failNow,
-            lastErrorCode: decision.reasonCode,
-            lastError: decision.reason,
-            lastDecision: "fail_batch",
-          });
+        await transitionSubmitted({
+          ...activeSubmittedEntry,
+          status: "hard_failure",
+          updatedAt: failNow,
+          finalizedAt: failNow,
+          lastErrorCode: decision.reasonCode,
+          lastError: decision.reason,
+          lastDecision: "fail_batch",
         });
 
         failed++;
@@ -945,10 +1033,13 @@ class DefaultDispatcher implements Dispatcher {
       // Branch: stop_campaign
       if (decision.disposition === "stop_campaign") {
         const stopNow = nowIso();
-        // (1B: draft explicitly RunState)
         await store.update((draft: RunState) => {
-          upsertEntry(draft, stateKey, {
-            ...submittedEntry,
+          setEntryGuarded(draft, stateKey, {
+            allowedStatuses: ["submitted"],
+            expectedAttemptNumber: nextAttemptNumber,
+            expectedOperatorId: provider.id,
+          }, {
+            ...activeSubmittedEntry,
             status: "hard_failure",
             updatedAt: stopNow,
             finalizedAt: stopNow,
@@ -983,33 +1074,15 @@ class DefaultDispatcher implements Dispatcher {
           }
         );
 
-        // (1B: draft explicitly RunState)
-        await store.update((draft: RunState) => {
-          upsertEntry(draft, stateKey, {
-            ...submittedEntry,
-            status: "hard_failure",
-            updatedAt: unknownNow,
-            finalizedAt: unknownNow,
-            lastErrorCode: "unknown_retry_disposition",
-            lastError: `Unsupported retry disposition: "${unknownDisposition}". Entry aborted to prevent zombie.`,
-            lastDecision: "fail_batch",
-          });
+        await transitionSubmitted({
+          ...activeSubmittedEntry,
+          status: "hard_failure",
+          updatedAt: unknownNow,
+          finalizedAt: unknownNow,
+          lastErrorCode: "unknown_retry_disposition",
+          lastError: `Unsupported retry disposition: "${unknownDisposition}". Entry aborted to prevent zombie.`,
+          lastDecision: "fail_batch",
         });
-
-        await this.auditRecorder.write({
-          type: "batch_failure",
-          campaignId,
-          batchId: batch.batchId,
-          operatorId: provider.id,
-          attemptNumber: nextAttemptNumber,
-          ts: Date.now(),
-          details: {
-            stateKey,
-            disposition: unknownDisposition,
-            reasonCode: "unknown_retry_disposition",
-            reason: `Unsupported retry disposition: "${unknownDisposition}"`,
-          },
-        }).catch(() => undefined);
 
         failed++;
         aborted = true;

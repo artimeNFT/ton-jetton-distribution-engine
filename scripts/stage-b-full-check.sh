@@ -34,6 +34,9 @@ echo "[stage-b-full] Stage E integration boundary smoke aggregator"
 echo "[stage-b-full] Stage F dispatcher integration boundary smoke aggregator"
 ./scripts/stage-f-full-smoke.sh
 
+echo "[stage-b-full] Stage A active-path state integrity regression"
+npx ts-node scripts/stage-a-state-integrity-regression.ts
+
 echo "[stage-b-full] Stage B-2 ingestion smoke"
 npx ts-node scripts/stage-b2-ingestion-smoke.ts
 

@@ -69,9 +69,12 @@ export interface ProviderFailureInfo {
 
 export interface WalletPool {
   /** Returns the next available provider, or null if none are currently eligible. */
-  getNextAvailableProvider(now: number): Provider | null;
-  markSuccess(operatorId: string, nowMs: number): void;
-  markFailure(operatorId: string, info: ProviderFailureInfo): void;
+  getNextAvailableProvider(
+    now: number,
+    selectionKey?: string
+  ): Promise<Provider | null> | Provider | null;
+  markSuccess(operatorId: string, nowMs: number): Promise<void> | void;
+  markFailure(operatorId: string, info: ProviderFailureInfo): Promise<void> | void;
 }
 
 // --- WalletPoolConfig --------------------------------------------------------
@@ -103,16 +106,6 @@ class DefaultWalletPool implements WalletPool {
 
   private readonly stateStore: AtomicStateStore;
 
-  /** In-memory round-robin cursor. Not persisted. */
-  private rrIndex = 0;
-
-  /**
-   * Write-through in-memory mirror of RunState.operators.
-   * Used for synchronous availability checks in getNextAvailableProvider.
-   * The durable source of truth remains the stateStore.
-   */
-  private readonly _runtimeSnapshot = new Map<string, OperatorRuntimeState>();
-
   constructor(
     eligible: Array<OperatorConfig & { mnemonic: string }>,
     allById: Map<string, OperatorConfig & { mnemonic: string | null }>,
@@ -136,44 +129,48 @@ class DefaultWalletPool implements WalletPool {
    *
    * Returns null if no eligible operator passes all checks.
    */
-  getNextAvailableProvider(now: number): Provider | null {
+  async getNextAvailableProvider(
+    now: number,
+    selectionKey = "default"
+  ): Promise<Provider | null> {
     if (this.eligible.length === 0) return null;
 
     const n = this.eligible.length;
+    const startIndex = stableSelectionIndex(selectionKey, n);
+    const selection: { id: string | null } = { id: null };
 
-    for (let attempt = 0; attempt < n; attempt++) {
-      const idx = (this.rrIndex + attempt) % n;
-      const op = this.eligible[idx]!;
-      const runtime = this._runtimeSnapshot.get(op.id);
-
-      if (runtime !== undefined) {
-        if (runtime.paused) continue;
-
-        if (
-          runtime.failedUntil !== null &&
-          new Date(runtime.failedUntil).getTime() > now
-        ) {
-          continue;
-        }
-
-        if (
-          runtime.cooldownUntil !== null &&
-          new Date(runtime.cooldownUntil).getTime() > now
-        ) {
-          continue;
+    await this.stateStore.update((draft: RunState) => {
+      for (const op of this.eligible) {
+        if (draft.operators[op.id] === undefined) {
+          draft.operators[op.id] = emptyRuntime();
         }
       }
 
-      this.rrIndex = (idx + 1) % n;
+      for (let attempt = 0; attempt < n; attempt++) {
+        const idx = (startIndex + attempt) % n;
+        const op = this.eligible[idx]!;
+        const runtime = draft.operators[op.id]!;
 
-      // 2F: persist lastSelectedAt as ISO string through stateStore on every selection.
-      const selectedAt: ISO8601 = new Date(now).toISOString();
-      this._mutateSnapshot(op.id, (r) => {
-        r.lastSelectedAt = selectedAt;
-      });
-      void this._persistRuntime();
+        if (runtime.paused) continue;
+        if (runtime.failedUntil !== null && Date.parse(runtime.failedUntil) > now) continue;
+        if (runtime.cooldownUntil !== null && Date.parse(runtime.cooldownUntil) > now) continue;
 
-      return {
+        runtime.lastSelectedAt = new Date(now).toISOString();
+        draft.operators[op.id] = runtime;
+        selection.id = op.id;
+        break;
+      }
+    });
+
+    if (selection.id === null) return null;
+    const op = this.eligible.find((candidate) => candidate.id === selection.id);
+    if (op === undefined) {
+      throw new WalletPoolError(
+        `[WalletPool] Persisted deterministic selection ${JSON.stringify(selection.id)} is not present in the eligible set.`,
+        "OPERATOR_INVALID"
+      );
+    }
+    return {
         id: op.id,
         label: op.label,
         mnemonic: op.mnemonic,
@@ -184,9 +181,6 @@ class DefaultWalletPool implements WalletPool {
         maxTxPerHour: op.maxTxPerHour,
         notes: op.notes,
       };
-    }
-
-    return null;
   }
 
   // --- markSuccess ----------------------------------------------------------
@@ -198,19 +192,18 @@ class DefaultWalletPool implements WalletPool {
    *   - consecutiveFailures -> 0
    *   - lastSuccessAt = ISO(nowMs)
    */
-  markSuccess(operatorId: string, nowMs: number): void {
+  async markSuccess(operatorId: string, nowMs: number): Promise<void> {
     const lastSuccessAt: ISO8601 = new Date(nowMs).toISOString();
-
-    this._mutateSnapshot(operatorId, (op) => {
+    await this.stateStore.update((draft: RunState) => {
+      const op = draft.operators[operatorId] ?? emptyRuntime();
       op.status = "active";
       op.cooldownUntil = null;
       op.failedUntil = null;
       op.consecutiveFailures = 0;
       op.lastSuccessAt = lastSuccessAt;
       op.lastSelectedAt = lastSuccessAt;
+      draft.operators[operatorId] = op;
     });
-
-    void this._persistRuntime();
   }
 
   // --- markFailure ----------------------------------------------------------
@@ -226,7 +219,7 @@ class DefaultWalletPool implements WalletPool {
    *
    * 2D: Only ISO strings are persisted. Numeric now is only the boundary input.
    */
-  markFailure(operatorId: string, info: ProviderFailureInfo): void {
+  async markFailure(operatorId: string, info: ProviderFailureInfo): Promise<void> {
     const { reason, cooldownUntil, failedUntil, now } = info;
     const lastFailureAt: ISO8601 = new Date(now).toISOString();
 
@@ -249,42 +242,15 @@ class DefaultWalletPool implements WalletPool {
       newStatus = "failed";
     }
 
-    this._mutateSnapshot(operatorId, (op) => {
+    await this.stateStore.update((draft: RunState) => {
+      const op = draft.operators[operatorId] ?? emptyRuntime();
       op.status = newStatus;
       op.consecutiveFailures += 1;
       op.lastFailureAt = lastFailureAt;
       op.lastError = reason;
       op.failedUntil = isFailedFuture ? failedUntilIso : null;
       op.cooldownUntil = isCooldownFuture && !isFailedFuture ? cooldownUntilIso : null;
-    });
-
-    void this._persistRuntime();
-  }
-
-  // --- Internal helpers -----------------------------------------------------
-
-  private _mutateSnapshot(
-    operatorId: string,
-    mutator: (op: OperatorRuntimeState) => void
-  ): void {
-    const current = this._runtimeSnapshot.get(operatorId) ?? emptyRuntime();
-    mutator(current);
-    this._runtimeSnapshot.set(operatorId, current);
-  }
-
-  /**
-   * Persists the in-memory snapshot into RunState.operators via the stateStore.
-   * Fire-and-forget from the caller's perspective; errors are swallowed since
-   * the snapshot remains consistent in-process.
-   *
-   * 2C: draft is explicitly typed as RunState (patch 1B alignment).
-   */
-  private async _persistRuntime(): Promise<void> {
-    const snapshot = new Map(this._runtimeSnapshot);
-    await this.stateStore.update((draft: RunState) => {
-      for (const [id, runtime] of snapshot) {
-        draft.operators[id] = runtime;
-      }
+      draft.operators[operatorId] = op;
     });
   }
 
@@ -293,15 +259,13 @@ class DefaultWalletPool implements WalletPool {
    * store. Called once by the factory before returning the pool.
    */
   async _loadRuntimeSnapshot(): Promise<void> {
-    const state = await this.stateStore.read();
-    for (const [id, runtime] of Object.entries(state.operators)) {
-      this._runtimeSnapshot.set(id, runtime);
-    }
-    for (const op of this.eligible) {
-      if (!this._runtimeSnapshot.has(op.id)) {
-        this._runtimeSnapshot.set(op.id, emptyRuntime());
+    await this.stateStore.update((draft: RunState) => {
+      for (const op of this.eligible) {
+        if (draft.operators[op.id] === undefined) {
+          draft.operators[op.id] = emptyRuntime();
+        }
       }
-    }
+    });
   }
 }
 
@@ -488,6 +452,15 @@ function emptyRuntime(): OperatorRuntimeState {
     lastFailureAt: null,
     lastError: null,
   };
+}
+
+function stableSelectionIndex(selectionKey: string, modulo: number): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < selectionKey.length; i++) {
+    hash ^= selectionKey.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash % modulo;
 }
 
 function errorMessage(err: unknown): string {
